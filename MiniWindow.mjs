@@ -1,4 +1,4 @@
-import { decodeAndGetNodes as ArrayHTML } from "./ArrayHTML.mjs";
+import { parseAndGetNodes as ArrayHTML } from "./ArrayHTML.mjs";
 const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent, contentFrame, confirmStyle, subLayer, subTitle, subFrame, subBody } = ArrayHTML([
 	["DIV", [
 		["STYLE", [
@@ -86,9 +86,7 @@ class QueueItem {
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: "QueueItem",
-			writable: false,
-			configurable: true,
-			enumerable: false
+			configurable: true
 		});
 	}
 }
@@ -103,9 +101,7 @@ class MiniWindowController {
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: this.name,
-			writable: false,
-			configurable: true,
-			enumerable: false
+			configurable: true
 		});
 	}
 }
@@ -125,9 +121,7 @@ class SubWindowController {
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: this.name,
-			writable: false,
-			configurable: true,
-			enumerable: false
+			configurable: true
 		});
 	}
 }
@@ -266,9 +260,7 @@ class MiniWindow extends EventTarget {
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: this.name,
-			writable: false,
-			configurable: true,
-			enumerable: false
+			configurable: true
 		});
 	}
 	static confirm(content, title = "确认") {
