@@ -104,6 +104,7 @@ class LoadRequest extends XMLHttpRequest {
 	set allowCache(value) { this.#allowCache = Boolean(value) }
 	#response = null;
 	#subResources = null;
+	#subResourcesLoaded = 0;
 	#startTime = null;
 	get readyState() {
 		if (super.readyState != XMLHttpRequest.DONE) {
@@ -113,7 +114,7 @@ class LoadRequest extends XMLHttpRequest {
 	get #percent() {
 		if (this.#response === null) return 0;
 		const subResourcesNumber = this.#subResources.length;
-		return subResourcesNumber ? 50 + this.#subResources.loaded / subResourcesNumber * 50 : 100;
+		return subResourcesNumber ? 50 + this.#subResourcesLoaded / subResourcesNumber * 50 : 100;
 	}
 	#afterFail(eventType) {
 		this.#fetching = false;
@@ -121,33 +122,33 @@ class LoadRequest extends XMLHttpRequest {
 	}
 	#blockEvent(event) { if (event.isTrusted) event.stopImmediatePropagation() }
 	#addLoaded() {
-		++this.#subResources.loaded;
+		++this.#subResourcesLoaded;
 		this.dispatchEvent(new ProgressEvent("progress", { loaded: this.#percent, total: 100 }));
 	}
-	#abortSubResources() { for (let item of this) item.abort() }
+	#abortSubResources() { for (let item of this.#subResources) item.abort() }
 	async #waitSub(item) {
 		await item.promise;
 		this.#addLoaded();
 	}
 	async #onBodyLoad(event) {
 		if (!event.isTrusted) return;
+		event.stopImmediatePropagation();
 		this.dispatchEvent(new ProgressEvent("progress", { loaded: 50, total: 100 }));
 		if (!this.#fetching) return;
 		const status = super.status, subResources = this.#subResources = [];
-		subResources.loaded = 0;
-		subResources.abort = this.#abortSubResources;
+		this.#subResourcesLoaded = 0;
 		if ((status >= 200 && status < 300) || status == 304) {
-			let documentFragment = this.#response = document.createRange().createContextualFragment(super.response);
-			for (let type of subLoads) for (let item of documentFragment.querySelectorAll(type.selector)) subResources.push(loadSubResource(item, this.#allowCache, type.loader, type.processor));
+			const documentFragment = this.#response = document.createRange().createContextualFragment(super.response);
+			for (const type of subLoads) for (const item of documentFragment.querySelectorAll(type.selector)) subResources.push(loadSubResource(item, this.#allowCache, type.loader, type.processor));
 			if (subResources.length) {
-				const timeout = super.timeout ? -1 : super.timeout - (Date.now() - this.#startTime);
-				if (timeout) {
+				const remainTime = super.timeout > 0 ? super.timeout - (Date.now() - this.#startTime): -1;
+				if (remainTime) {
 					let timeoutId;
-					if (timeout > 0) timeoutId = setTimeout(function () { subResources.abort() }, timeout);
+					if (remainTime > 0) timeoutId = setTimeout(this.#abortSubResources.bind(this), remainTime);
 					await Promise.all(subResources.map(this.#waitSub.bind(this)));
 					if (timeoutId) clearTimeout(timeoutId);
 					if (!this.#fetching) return;
-				}
+				} else this.#abortSubResources();
 			}
 		}
 		this.#fetching = false;
@@ -172,7 +173,7 @@ class LoadRequest extends XMLHttpRequest {
 	}
 	open(method, url, user, password) {
 		LoadRequest.#checkInstance(this);
-		if (this.#fetching && super.readyState == XMLHttpRequest.DONE) this.#subResources.abort();
+		if (this.#fetching && super.readyState == XMLHttpRequest.DONE) this.#abortSubResources();
 		this.#response = this.#subResources = this.#startTime = null;
 		this.#done = false;
 		super.open(method, url, true, user, password);
@@ -191,7 +192,7 @@ class LoadRequest extends XMLHttpRequest {
 		if (super.readyState != XMLHttpRequest.DONE) {
 			super.abort();
 		} else {
-			this.#subResources.abort();
+			this.#abortSubResources();
 			this.#afterFail("abort");
 		}
 	}
