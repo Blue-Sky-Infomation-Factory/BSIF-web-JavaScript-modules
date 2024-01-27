@@ -1,4 +1,5 @@
 import { parse, parseAndGetNodes, EVENT_LISTENERS } from "./ArrayHTML.mjs";
+import PromiseAdapter from "./PromiseAdapter.mjs";
 const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent, contentFrame, confirmStyle, subLayer, subTitle, subFrame, subBody } = parseAndGetNodes([
 	["div", [
 		["style", [
@@ -33,7 +34,7 @@ const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent,
 			"#mini-window-hr,#mini-window-sub-hr{box-sizing:border-box;width:100%;border:solid 0.0625rem var(--mini-window-text-color);border-radius:0.0625rem;background-color:var(--mini-window-text-color)}",
 			"#mini-window-content-frame{position:relative;width:100%;height:100%;overflow:hidden}",
 			"#mini-window-layer.in>#mini-window::after,#mini-window-layer.out>#mini-window::after,#mini-window.in::after,#mini-window.out::after,#mini-window-sub.in::after,#mini-window-sub.out::after,#mini-window-content-frame.blocked::after{content:\"\";position:absolute;z-index:2147483647;left:0;right:0;top:0;bottom:0;display:block;opacity:0}",
-			"#mini-window-content{position:relative;max-width:100%;max-height:100%;width:100%;height:100%;overflow:auto;word-wrap:break-word;word-break:normal;color:var(--mini-window-text-color);user-select:text}",
+			"#mini-window-content{position:relative;max-width:100%;max-height:100%;width:100%;height:100%;box-sizing:border-box;overflow:auto;word-wrap:break-word;word-break:normal;color:var(--mini-window-text-color);user-select:text}",
 			"#mini-window-content img{max-width:100%;height:auto}",
 			"#mini-window-sub-content-frame{display:grid;gap:0.5rem}",
 			"#mini-window-sub-content-frame.confirm,#mini-window-sub-content-frame.alert{grid-template-rows:1fr auto}",
@@ -70,11 +71,7 @@ const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent,
 		"#mini-window-confirm-buttons{display:grid;grid-template-columns:repeat(2,minmax(auto,6rem));gap:0.5rem;justify-self:end}",
 		"#mini-window-confirm-buttons>.mini-window-button{font-weight:bold}"
 	], null, "confirmStyle"]
-]).nodes;
-const queue = [], windowStyle = windowBody.style;
-var pending = false, closeCurrent = null, unshiftMode = false;
-function preventBubble(event) { event.stopPropagation() }
-const STYLE_NAMES = {
+]).nodes, STYLE_NAMES = {
 	backgroundColor: "background-color",
 	textColor: "text-color",
 	buttonBackgroundColor: "button-background-color",
@@ -83,30 +80,21 @@ const STYLE_NAMES = {
 	buttonTextColor: "button-text-color",
 	buttonHoverTextColor: "button-hover-text-color",
 	buttonActiveTextColor: "button-active-text-color"
-};
-class QueueItem {
-	controller = new MiniWindowController(this);
+}, queue = [], windowStyle = windowBody.style;
+var pending = false, subWindowPending = false, closeCurrent = null, abortCurrentSub = null, unshiftMode = false;
+function preventBubble(event) { event.stopPropagation() }
+class MiniWindowController {
 	instance;
 	data;
 	constructor(instance, data) {
 		this.instance = instance;
 		this.data = data;
 	}
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, {
-			value: "QueueItem",
-			configurable: true
-		});
-	}
-}
-class MiniWindowController {
-	constructor(queueItem) { this.queueItem = queueItem }
 	pending = true;
 	active = false;
 	closed = false;
 	blocked = true;
-	queueItem;
-	subWindow = null;
+	subWindows = [];
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: this.name,
@@ -115,17 +103,15 @@ class MiniWindowController {
 	}
 }
 class SubWindowController {
-	promise1;
-	promise2;
-	active = true;
-	resolve1;
-	reject1;
-	resolve2;
-	#ex1(resolve, reject) { this.resolve1 = resolve; this.reject1 = reject }
-	#ex2(resolve) { this.resolve2 = resolve }
-	constructor() {
-		this.promise1 = new Promise(this.#ex1.bind(this));
-		this.promise2 = new Promise(this.#ex2.bind(this));
+	promise = new PromiseAdapter;
+	type;
+	title;
+	content;
+	shown = false;
+	constructor(type, title, content) {
+		this.type = type;
+		this.title = title;
+		this.content = content;
 	}
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
@@ -185,9 +171,7 @@ class MiniWindow extends EventTarget {
 		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to construct 'MiniWindow': Argument 'content' is not a string or HTML node.");
 		if (typeof options != "object") throw new TypeError("Failed to construct 'MiniWindow': Argument 'options' is not an object.");
 		super();
-		const queueItem = new QueueItem(this, { content, title, options });
-		this.#controller = queueItem.controller;
-		queueUp(queueItem);
+		queueUp(this.#controller = new MiniWindowController(this, { content, title, options }));
 	}
 	blockSwitch(toState = undefined) {
 		MiniWindow.#checkInstance(this);
@@ -208,60 +192,49 @@ class MiniWindow extends EventTarget {
 		unshiftMode = false;
 		return temp;
 	}
-	#subWindowCheck() {
-		if (!this.#controller.active) throw new Error(`Failed to execute 'subWindowCheck' on 'MiniWindow': The instance is not active.`);
-		if (this.#controller.subWindow?.active) throw new Error(`Failed to execute 'subWindowCheck' on 'MiniWindow': Sub window is occupied now.`);
-	}
-	async #createSub(controller, type, title, content) {
-		const main = this.#controller, pre = main.subWindow;
-		main.subWindow = controller;
-		if (pre) {
-			await pre.promise2;
-			if (!main.active) {
-				controller.resolve2();
-				return;
-			}
-		}
-		showSub(type, title, content);
-		try { await controller.promise1 } finally {
-			controller.active = false;
-			closeSub(main, controller);
-		}
+	#subWindowCheck() { if (this.#controller.closed) throw new Error(`Failed to execute 'subWindowCheck' on 'MiniWindow': The instance is closed.`) }
+	async #createSub(controller) {
+		const main = this.#controller, queue = main.subWindows;
+		queue.push(controller);
+		if (main.active && !subWindowPending) subWindowWorkflow(queue);
+		try { await controller.promise.promise } catch (_ignore) { return }
+		if (!controller.shown) queue.splice(queue.indexOf(controller), 1);
 	}
 	alert(message) {
 		MiniWindow.#checkInstance(this);
 		if (typeof message != "string") throw new TypeError("Failed to execute 'alert' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
-		const controller = new SubWindowController, { promise1, resolve1 } = controller;
-		this.#createSub(controller, "alert", "提示", parse([
+		const controller = new SubWindowController("alert", "提示", parse([
 			["div", message, { id: "mini-window-sub-message" }],
-			["div", [["button", "确认", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve1() }, { once: true, passive: true }]] }]], { id: "mini-window-sub-buttons" }]
-		]));
-		return promise1;
+			["div", [["button", "确认", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve() }, { once: true, passive: true }]] }]], { id: "mini-window-sub-buttons" }]
+		])), { promise, resolve } = controller.promise;
+		this.#createSub(controller);
+		return promise;
 	}
 	confirm(message) {
 		MiniWindow.#checkInstance(this);
 		if (typeof message != "string") throw new TypeError("Failed to execute 'confirm' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
-		const controller = new SubWindowController, { promise1, resolve1 } = controller;
-		this.#createSub(controller, "confirm", "确认", parse([
+		const controller = new SubWindowController("confirm", "确认", parse([
 			["div", message, { id: "mini-window-sub-message" }],
 			["div", [
-				["button", "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve1(true) }, { once: true, passive: true }]] }],
-				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve1(false) }, { once: true, passive: true }]] }]
+				["button", "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true) }, { once: true, passive: true }]] }],
+				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false) }, { once: true, passive: true }]] }]
 			], { id: "mini-window-sub-buttons" }]
-		]));
-		return promise1;
+		])), { resolve, promise } = controller.promise;
+		this.#createSub(controller);
+		return promise;
 	}
 	wait(message) {
+		MiniWindow.#checkInstance(this);
 		if (typeof message != "string") throw new TypeError("Failed to execute 'wait' on 'MiniWindow': Argument 'message' is not a string.");
-		this.#subWindowCheck("wait");
-		const controller = new SubWindowController;
-		this.#createSub(controller, "wait", "请等待", parse([
+		this.#subWindowCheck();
+		const controller = new SubWindowController("wait", "请等待", parse([
 			["div", null, { id: "mini-window-sub-cycle" }],
 			["div", message, { id: "mini-window-sub-message" }]
 		]));
-		return controller.resolve1;
+		this.#createSub(controller);
+		return controller.promise.resolve;
 	}
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
@@ -273,20 +246,19 @@ class MiniWindow extends EventTarget {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm': 1 argument required, but only 0 present.");
 		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'confirm': Argument 'content' is not a string or HTML node.");
 		if (typeof title != "string") title = "确认";
-		var fulfill;
-		const promise = new Promise(function (resolve) { fulfill = resolve }), miniWindow = new this(parse([
+		const { promise, resolve } = new PromiseAdapter, miniWindow = new this(parse([
 			confirmStyle,
 			["div", content, { id: "mini-window-confirm-descriptions" }],
 			["div", [
 				["button", "是", {
 					class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => {
-						fulfill(true);
+						resolve(true);
 						miniWindow.close();
 					}, { once: true, passive: true }]]
 				}],
 				["button", "否", {
 					class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => {
-						fulfill(false);
+						resolve(false);
 						miniWindow.close();
 					}, { once: true, passive: true }]]
 				}]
@@ -300,22 +272,22 @@ function clearContent() {
 	windowClose.style = "";
 	windowContent.innerHTML = "";
 	windowContent.style = "";
-	for (let i in STYLE_NAMES) windowStyle.setProperty(`--mini-window-${STYLE_NAMES[i]}`, null);
+	for (const i in STYLE_NAMES) windowStyle.setProperty(`--mini-window-${STYLE_NAMES[i]}`, null);
 	contentFrame.className = "";
 }
 function setStyle(data) {
 	if (!(data instanceof Object)) return;
-	for (let i in STYLE_NAMES) if (i in data) windowStyle.setProperty(`--mini-window-${STYLE_NAMES[i]}`, data[i]);
+	for (const i in STYLE_NAMES) if (i in data) windowStyle.setProperty(`--mini-window-${STYLE_NAMES[i]}`, data[i]);
 }
 const sizeFormat = /^\d+%$/;
 function setSize(data) {
 	if (!(data instanceof Object)) return;
 	if ("width" in data) {
-		let width = data.width;
+		const width = data.width;
 		(sizeFormat.test(width) ? windowBody : windowContent).style.width = width;
 	}
 	if ("height" in data) {
-		let height = data.height;
+		const height = data.height;
 		(sizeFormat.test(height) ? windowBody : windowContent).style.height = height;
 	}
 }
@@ -348,23 +320,29 @@ function fadeOut(target) {
 		target.className = "out";
 	})
 }
-async function operator() {
+async function workflow() {
+	if (!queue.length) {
+		pending = false;
+		return;
+	}
+	layer.style.display = "grid";
 	var target = layer;
 	while (true) {
-		let { data, instance, controller } = queue.splice(0, 1)[0];
+		const controller = queue.shift(), { instance, subWindows } = controller;
 		controller.pending = false;
 		updateQueueNumber();
-		setContent(data);
-		let close = new Promise(waitClose);
+		setContent(controller.data);
+		const close = new Promise(waitClose);
 		controller.active = true;
 		instance.dispatchEvent(new Event("show"));
+		if (subWindows.length) subWindowWorkflow(subWindows);
 		await fadeIn(target);
 		instance.dispatchEvent(new Event("shown"));
 		await close;
 		closeCurrent = null;
 		controller.active = false;
 		controller.closed = true;
-		if (controller.subWindow?.active) controller.subWindow.reject1(new Error("MiniWindow close"));
+		if (subWindowPending) clearSubWindows(controller);
 		instance.dispatchEvent(new Event("close"));
 		await fadeOut(target = queue.length ? windowBody : layer);
 		instance.dispatchEvent(new Event("closed"));
@@ -372,40 +350,31 @@ async function operator() {
 		if (target == windowBody && !queue.length) {
 			await fadeOut(target = layer);
 			windowBody.className = "";
-			if (!queue.length) break;
-		} else if (!queue.length) break;
+		}
+		if (!queue.length) break;
 	}
-}
-async function show() {
-	if (!queue.length) {
-		pending = false;
-		return;
-	}
-	layer.style.display = "grid";
-	await operator();
 	layer.style.display = null;
 	pending = false;
 }
 function updateQueueNumber() { windowQueue.innerText = queue.length > 99 ? "99+" : queue.length }
-function queueUp(queueItem) {
+function queueUp(controller) {
 	if (unshiftMode) {
-		queue.unshift(queueItem);
+		queue.unshift(controller);
 		updateQueueNumber();
 		return;
 	}
-	queue.push(queueItem);
+	queue.push(controller);
 	updateQueueNumber();
 	if (pending) return;
 	pending = true;
-	queueMicrotask(show);
+	queueMicrotask(workflow);
 }
 function waitClose(resolve) { closeCurrent = resolve }
 function closeInstance(controller) {
 	if (controller.closed) return;
 	controller.closed = true;
 	if (controller.pending) {
-		let index = queue.indexOf(controller.queueItem);
-		queue.splice(index, 1);
+		queue.splice(queue.indexOf(controller), 1);
 		updateQueueNumber();
 	} else closeCurrent();
 }
@@ -425,15 +394,33 @@ async function showSub(type, title, content) {
 	subLayer.style.display = "grid";
 	await fadeIn(subBody);
 }
-async function closeSub(main, controller) {
+async function closeSub() {
 	await fadeOut(subBody);
-	clearSub();
-	controller.resolve2();
-	if (main.subWindow == controller) main.subWindow = null;
+	clearSubContent();
 }
-function clearSub() {
+function clearSubContent() {
 	subLayer.style.display = null;
 	subTitle.innerText = subFrame.className = subFrame.innerHTML = "";
+}
+function clearSubWindows(controller) {
+	if (abortCurrentSub) abortCurrentSub(new Error("MiniWindow closed"));
+	for (const item of controller.subWindows) item.promise.reject(new Error("MiniWindow closed"));
+}
+async function subWindowWorkflow(queue) {
+	subWindowPending = true;
+	while (queue.length) {
+		const instance = queue.shift(), promise = instance.promise;
+		abortCurrentSub = promise.reject;
+		instance.shown = true;
+		showSub(instance.type, instance.title, instance.content);
+		try { await promise.promise } catch (_ignore) {
+			abortCurrentSub = null;
+			break;
+		}
+		abortCurrentSub = null;
+		await closeSub();
+	}
+	subWindowPending = false;
 }
 function remove() { layer.remove() }
 function reload() { document.body.appendChild(layer) }

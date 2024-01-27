@@ -1,23 +1,36 @@
 type statusCallback<R extends XMLHttpRequest> = (this: R, status: number) => void;
 type eventCallback<R extends XMLHttpRequest> = (this: R, event: ProgressEvent) => void;
-type responseCallback<R extends XMLHttpRequest> = (this: R, response: any) => void;
+type responseCallback<R extends XMLHttpRequest> = (this: R, response: R['response']) => void;
 type failedCallback = statusCallback | eventCallback;
 type sendType = XMLHttpRequestBodyInit | HTMLFormElement | Object | any;
 type AJAXOptions = {
+	/** 请求的 URL */
 	url: string | URL,
+	/** 请求使用的方法 */
 	method?: string,
+	/** 是否使用异步请求，默认 true */
 	async?: boolean,
 	username?: string,
 	password?: string,
+	/** 请求成功的回调 */
 	success?: responseCallback,
+	/** 请求失败的回调 */
 	fail?: statusCallback,
+	/** 请求完成时的回调（成功或失败） */
 	done?: statusCallback,
+	/** 请求发送错误的回调 */
 	error?: eventCallback,
+	/** 请求被中断的回调 */
 	abort?: eventCallback,
+	/** 要将请求的响应解析为什么类型的数据 */
 	type?: XMLHttpRequestResponseType,
+	/** 需要发送的数据，仅在调用 ajax 函数且 noSend 不为 true 时有效 */
 	data?: sendType,
+	/** 请求的超时时间，超时未完成则失败，单位是毫秒 */
 	timeout?: number,
+	/** 是否允许使用浏览器缓存进行响应 */
 	cache?: boolean,
+	/** 配置请求后不立即发送，仅在调用 ajax 函数时有效 */
 	noSend?: boolean
 };
 type subLoads = {
@@ -78,4 +91,10 @@ declare function load(
 	success?: statusCallback,
 	fail?: failedCallback
 ): LoadRequest | XMLHttpRequest;
-export { ajax, getJSON, getXML, load, postJSON }
+/**
+ * 以 AJAX 范式配置请求
+ * @param request 请求对象
+ * @param options 选项
+ */
+declare function buildRequest(request: LoadRequest | XMLHttpRequest, options: AJAXOptions): void;
+export { ajax, getJSON, getXML, load, postJSON, buildRequest, LoadRequest }

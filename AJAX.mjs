@@ -141,7 +141,7 @@ class LoadRequest extends XMLHttpRequest {
 			const documentFragment = this.#response = document.createRange().createContextualFragment(super.response);
 			for (const type of subLoads) for (const item of documentFragment.querySelectorAll(type.selector)) subResources.push(loadSubResource(item, this.#allowCache, type.loader, type.processor));
 			if (subResources.length) {
-				const remainTime = super.timeout > 0 ? super.timeout - (Date.now() - this.#startTime): -1;
+				const remainTime = super.timeout > 0 ? super.timeout - (Date.now() - this.#startTime) : -1;
 				if (remainTime) {
 					let timeoutId;
 					if (remainTime > 0) timeoutId = setTimeout(this.#abortSubResources.bind(this), remainTime);
@@ -255,4 +255,4 @@ function load(url, targetElement, allowCache = true, preloadResource = true, suc
 		cache: Boolean(allowCache)
 	});
 }
-export { ajax, getJSON, getXML, load, postJSON }
+export { ajax, getJSON, getXML, load, postJSON, buildRequest, LoadRequest }
