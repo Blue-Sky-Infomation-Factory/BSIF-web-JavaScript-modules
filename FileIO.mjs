@@ -16,13 +16,7 @@ function read(file, readType) {
 }
 function fileHandleMap(item) { return item.getFile() }
 async function get(options) {
-	if (arguments.length && !(options instanceof Object)) throw new TypeError("Failed to execute 'get': The provided value is not an object.");
-	var temp;
-	try { temp = await showOpenFilePicker(options) } catch (error) {
-		if (error instanceof TypeError) throw error;
-		return null;
-	}
-	temp = await Promise.all(temp.map(fileHandleMap));
+	const temp = await Promise.all((await showOpenFilePicker(options)).map(fileHandleMap));
 	return options?.multiple ? temp : temp[0];
 }
 async function open(options) {

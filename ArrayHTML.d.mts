@@ -1,44 +1,46 @@
 declare const EVENT_LISTENERS: unique symbol;
-type AddEventListenerParameters<T extends keyof HTMLElementEventMap> = [
-	T,
-	((this: HTMLElement, event: HTMLElementEventMap[T]) => any) | EventListenerObject,
+type AddDOMEventListenerParameters = [
+	keyof HTMLElementEventMap,
+	((this: HTMLElement, event: HTMLElementEventMap[keyof HTMLElementEventMap]) => any) | EventListenerObject,
 	(boolean | AddEventListenerOptions)?
 ];
-type CustomEventListenerParameters = [
+type AddCustomEventListenerParameters = [
 	string,
 	((this: HTMLElement, event: Event) => any) | EventListenerObject,
 	(boolean | AddEventListenerOptions)?
 ]
 type ArrayHTMLElementNode = [
 	keyof HTMLElementTagNameMap,
-	(ArrayHTMLCollection | string | boolean | number | bigint | Node)?,
+	((ArrayHTMLCollectionContent | ArrayHTMLShadowRootNode)[] | ArrayHTMLNodeContent | Node)?,
 	{
 		style?: Partial<CSSStyleDeclaration> | string,
 		class?: string[] | string,
-		[EVENT_LISTENERS]?: (AddEventListenerParameters<keyof HTMLElementEventMap> | CustomEventListenerParameters)[],
+		[EVENT_LISTENERS]?: (AddDOMEventListenerParameters | AddCustomEventListenerParameters)[],
 		[key: string]: any
 	}?,
 	string?
 ];
 type ArrayHTMLTextNode = [
 	"#comment" | "#text",
-	(string | boolean | number | bigint)?,
+	ArrayHTMLNodeContent?,
 	void?,
 	string?
 ];
 type ArrayHTMLShadowRootNode = [
 	"#shadow",
-	ArrayHTMLCollection | string | boolean | number | bigint | Node | void,
+	ArrayHTMLCollection | ArrayHTMLNodeContent | Node | void,
 	ShadowRootInit,
 	string?
 ];
-type ArrayHTMLNode = ArrayHTMLElementNode | ArrayHTMLTextNode | ArrayHTMLShadowRootNode;
-type ArrayHTMLCollection = (ArrayHTMLNode | string | boolean | number | bigint | Node)[];
+type ArrayHTMLNodeContent = string | boolean | number | bigint;
+type ArrayHTMLCollectionContent = ArrayHTMLElementNode | ArrayHTMLTextNode | string | ArrayHTMLNodeContent | Node;
+type ArrayHTMLCollection = ArrayHTMLCollectionContent[];
+type CaughtNodes = { [key: string]: HTMLElementTagNameMap[keyof HTMLElementTagNameMap] | Comment | Text | ShadowRoot };
 declare function serialize(node: Node, onlyChildren?: boolean): ArrayHTMLCollection;
 declare function parse(ArrayHTML: ArrayHTMLCollection): DocumentFragment;
 declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection): {
 	documentFragment: DocumentFragment,
-	nodes: { [key: string]: HTMLElementTagNameMap[keyof HTMLElementTagNameMap] | Comment | Text | ShadowRoot }
+	nodes: CaughtNodes
 };
-declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection, appendTo: Node): { [key: string]: HTMLElementTagNameMap[keyof HTMLElementTagNameMap] | Comment | Text | ShadowRoot };
+declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection, appendTo: Node): CaughtNodes;
 export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS }
