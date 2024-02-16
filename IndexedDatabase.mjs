@@ -257,6 +257,11 @@ class IndexedDatabaseUpgrader {
 		this.#oldVersion = oldVersion;
 		this.#newVersion = newVersion;
 	}
+	hasObjectStore(name) {
+		IndexedDatabaseUpgrader.#checkInstance(this);
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'hasObjectStore' on 'IndexedDatabaseUpgrader': 1 argument required, but only 0 present.");
+		return this.#db.objectStoreNames.contains(name)
+	}
 	createObjectStore(name, option = null) {
 		IndexedDatabaseUpgrader.#checkInstance(this);
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'createObjectStore' on 'IndexedDatabaseUpgrader': 1 argument required, but only 0 present.");

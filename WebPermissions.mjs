@@ -1,7 +1,7 @@
 import MiniWindow from "./MiniWindow.mjs";
 import { parse as parseAH, parseAndGetNodes } from "./ArrayHTML.mjs";
 import { LocalStorageObject } from "./LocalStorageObject.mjs";
-const style = parseAndGetNodes([["style", "#bs-requestPermission_title{font-size:1.2rem}#bs-requestPermission_frame{display:grid;gap:0.5rem}#bs-requestPermission_hint{font-weight:bold}", null, "style"]]).nodes.style;
+const style = parseAndGetNodes([["style", "#bs-requestPermission-title{font-size:1.2rem}#bs-requestPermission-frame{display:grid;gap:0.5rem}#bs-requestPermission-hint{font-weight:bold}", null, "style"]]).nodes.style;
 const permissions = {
 	notification: {
 		localName: "通知",
@@ -24,14 +24,14 @@ async function alertRequest(permissionName, reason) {
 	const documentFragment = parseAH([
 		style,
 		["div", [
-			["h1", `此网站请求${permissions[permissionName].localName}权限`, { id: "bs-requestPermission_title" }],
-			["span", permissions[permissionName].descriptions, { id: "bs-requestPermission_hint" }],
+			["h1", `此网站请求${permissions[permissionName].localName}权限`, { id: "bs-requestPermission-title" }],
+			["span", permissions[permissionName].descriptions, { id: "bs-requestPermission-hint" }],
 			["p", [
 				"此网站需要这项权限用于：", ["br"],
 				reason ?? "未知用途"
-			], { id: "bs-requestPermission_descriptions" }],
+			], { id: "bs-requestPermission-descriptions" }],
 			"你想要授权吗？",
-		], { id: "bs-requestPermission_frame" }]
+		], { id: "bs-requestPermission-frame" }]
 	]);
 	const result = await MiniWindow.confirm(documentFragment, "请求权限");
 	if (!result) requestCount.chance = 0;

@@ -33,6 +33,7 @@ declare class IndexedDatabaseUpgrader {
 	private constructor();
 	readonly oldVersion: number;
 	readonly newVersion: number;
+	hasObjectStore(name: string): boolean;
 	createObjectStore(name: string, option?: IDBObjectStoreParameters): ObjectStoreUpgrader;
 	deleteObjectStore(name: string): void;
 	//CRUD

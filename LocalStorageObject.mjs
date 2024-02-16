@@ -1,3 +1,4 @@
+const realObject = Symbol("realObject");
 class LocalStorageObject {
 	static #checkInstance(instance) { if (!(instance instanceof this)) throw new TypeError("Illegal invocation") }
 	#onempty = null;
@@ -82,8 +83,7 @@ class LocalStorageObject {
 		if (this.#updataPending) return;
 		this.#updataPending = true;
 		var object;
-		const key = this.#storageName
-		const source = localStorage.getItem(key);
+		const key = this.#storageName, source = localStorage.getItem(key);
 		try { if (!((object = JSON.parse(source)) instanceof Object)) throw new TypeError } catch (ignore) {
 			const callback = this.#onbroken;
 			if (callback) {
@@ -104,7 +104,7 @@ class LocalStorageObject {
 		});
 	}
 	static objectLink(proxyObject, propertyName, object) {
-		proxyObject[propertyName]=object;
+		proxyObject[propertyName] = object;
 		return proxyObject[propertyName]
 	}
 }
@@ -119,6 +119,7 @@ class Handler {
 	#path;
 	#storageController;
 	get(target, property) {
+		if (property == realObject) return target;
 		const value = target[property];
 		if (value instanceof Object) {
 			const path = Array.from(this.#path);
@@ -134,9 +135,17 @@ class Handler {
 			case "symbol":
 			case "undefined":
 				console.warn("LocalStorage cannot store value:", value);
+				break;
+			case "object": {
+				const object = value?.[realObject];
+				if (object) {
+					target[property] = object;
+					break;
+				}
+			}
 			default:
+				target[property] = value;
 		}
-		target[property] = value;
 		this.#save(target);
 		return true;
 	}

@@ -1,46 +1,44 @@
-import { parse as ArrayHTML } from "./ArrayHTML.mjs";
-document.head.appendChild(ArrayHTML([["style", [
-	".bs-carousel_box{box-sizing:border-box;width:100%;height:100%;border:1px solid black;position:relative;border-radius:1rem;background-color:black;overflow:hidden;transition:none 0.4s ease-in-out}",
-	".bs-carousel_scroll,.bs-carousel_item{width:100%;height:100%}",
-	".bs-carousel_scroll{left:0;position:absolute;top:0;display:grid;grid-auto-flow:column;grid-auto-columns:100%;transition-property:left;transition-duration:inherit;transition-timing-function:inherit;z-index:1}",
-	".bs-carousel_item{position:relative;display:block;background-color:white}",
-	".bs-carousel_item_image{width:100%;height:100%;background-position:center;background-size:cover;transition:transform 0.2s ease-in}",
-	".bs-carousel_item.action{cursor:pointer}",
-	".bs-carousel_item.action:hover>.bs-carousel_item_image{transform:scale(1.05)}",
-	".bs-carousel_item.action:active>.bs-carousel_item_image{transition-duration:0s;transform:scale(1.025)}",
-	".bs-carousel_item_text{box-sizing:border-box;width:100%;padding:0.5em;position:absolute;left:0;bottom:0;background-color:rgba(0,0,0,0.5);color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-	".bs-carousel_paginations{width:min-content;height:0.25rem;margin:0 auto;padding:0.25rem 0.5rem;position:absolute;top:0;left:0;right:0;opacity:0.5;background-color:rgba(0,0,0,50%);display:grid;grid-auto-flow:column;grid-auto-columns:1rem;gap:0.5rem;transition-property:opacity,padding,height;transition-duration:inherit;transition-timing-function:inherit;border-radius:0 0 0.5rem 0.5rem;overflow:hidden;z-index:3}",
-	".bs-carousel_paginations:hover{height:1rem;padding:0.5rem;opacity:1}",
-	".bs-carousel_paginations_item{box-sizing:border-box;width:1rem;margin:0;display:block;border-radius:0.125rem;outline:none;appearance:none;background-color:#DDDDDD;overflow:hidden;transition-property:background-color,border-radius;transition-duration:inherit;transition-timing-function:inherit;cursor:pointer}",
-	".bs-carousel_paginations_item:hover{background-color:#FFC000}",
-	".bs-carousel_paginations_item:active{background-color:#00C000}",
-	".bs-carousel_paginations:hover>.bs-carousel_paginations_item{border-radius:0.25rem}",
-	".bs-carousel_paginations_float,.bs-carousel_paginations_item:checked{background-color:#00C0FF}",
-	".bs-carousel_paginations_float{width:1rem;height:0.25rem;border-radius:0.125rem;position:absolute;left:0.5rem;top:0.25rem;transition-property:top,height,border-radius,transform;transition-duration:inherit;transition-timing-function:inherit}",
-	".bs-carousel_paginations:hover>.bs-carousel_paginations_float{height:1rem;top:0.5rem;border-radius:0.25rem}",
-	".bs-carousel_arrow{height:2rem;width:1.5rem;margin:auto 0;border:none;position:absolute;top:0;bottom:0;opacity:0;background-color:rgba(0,0,0,0.5);color:white;font-size:1rem;line-height:2rem;text-align:center;z-index:2;transition:opacity 0.2s ease-in;cursor:pointer}",
-	".bs-carousel_box.single>.bs-carousel_paginations,.bs-carousel_box.single>.bs-carousel_arrow{display:none}",
-	".bs-carousel_arrow.prev{border-radius:0 0.5rem 0.5rem 0;left:0}",
-	".bs-carousel_arrow.next{border-radius:0.5rem 0 0 0.5rem;right:0}",
-	".bs-carousel_box:hover>.bs-carousel_arrow{opacity:1}"
+import { EVENT_LISTENERS, parseAndGetNodes } from "./ArrayHTML.mjs";
+document.head.appendChild(parseAndGetNodes([["style", [
+	".bs-carousel-box{box-sizing:border-box;width:100%;height:100%;border:1px solid black;position:relative;border-radius:1rem;background-color:black;overflow:hidden;transition:none 0.4s ease-in-out}",
+	".bs-carousel-scroll,.bs-carousel-item{width:100%;height:100%}",
+	".bs-carousel-scroll{left:0;position:absolute;top:0;display:grid;grid-auto-flow:column;grid-auto-columns:100%;transition-property:left;transition-duration:inherit;transition-timing-function:inherit;z-index:1}",
+	".bs-carousel-item{position:relative;display:block;background-color:white}",
+	".bs-carousel-item-image{width:100%;height:100%;background-position:center;background-size:cover;transition:transform 0.2s ease-in}",
+	".bs-carousel-item.action{cursor:pointer}",
+	".bs-carousel-item.action:hover>.bs-carousel-item-image{transform:scale(1.05)}",
+	".bs-carousel-item.action:active>.bs-carousel-item-image{transition-duration:0s;transform:scale(1.025)}",
+	".bs-carousel-item-text{box-sizing:border-box;width:100%;padding:0.5em;position:absolute;left:0;bottom:0;background-color:rgba(0,0,0,0.5);color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+	".bs-carousel-paginations{width:min-content;height:0.25rem;margin:0 auto;padding:0.25rem 0.5rem;position:absolute;top:0;left:0;right:0;opacity:0.5;background-color:rgba(0,0,0,50%);display:grid;grid-auto-flow:column;grid-auto-columns:1rem;gap:0.5rem;transition-property:opacity,padding,height;transition-duration:inherit;transition-timing-function:inherit;border-radius:0 0 0.5rem 0.5rem;overflow:hidden;z-index:3}",
+	".bs-carousel-paginations:hover{height:1rem;padding:0.5rem;opacity:1}",
+	".bs-carousel-paginations-item{box-sizing:border-box;width:1rem;margin:0;display:block;border-radius:0.125rem;outline:none;appearance:none;background-color:#DDDDDD;overflow:hidden;transition-property:background-color,border-radius;transition-duration:inherit;transition-timing-function:inherit;cursor:pointer}",
+	".bs-carousel-paginations-item:hover{background-color:#FFC000}",
+	".bs-carousel-paginations-item:active{background-color:#00C000}",
+	".bs-carousel-paginations:hover>.bs-carousel-paginations-item{border-radius:0.25rem}",
+	".bs-carousel-paginations-float,.bs-carousel-paginations-item:checked{background-color:#00C0FF}",
+	".bs-carousel-paginations-float{width:1rem;height:0.25rem;border-radius:0.125rem;position:absolute;left:0.5rem;top:0.25rem;transition-property:top,height,border-radius,transform;transition-duration:inherit;transition-timing-function:inherit}",
+	".bs-carousel-paginations:hover>.bs-carousel-paginations-float{height:1rem;top:0.5rem;border-radius:0.25rem}",
+	".bs-carousel-arrow{height:2rem;width:1.5rem;margin:auto 0;border:none;position:absolute;top:0;bottom:0;opacity:0;background-color:rgba(0,0,0,0.5);color:white;font-size:1rem;line-height:2rem;text-align:center;z-index:2;transition:opacity 0.2s ease-in;cursor:pointer}",
+	".bs-carousel-box.single>.bs-carousel-paginations,.bs-carousel-box.single>.bs-carousel-arrow{display:none}",
+	".bs-carousel-arrow.prev{border-radius:0 0.5rem 0.5rem 0;left:0}",
+	".bs-carousel-arrow.next{border-radius:0.5rem 0 0 0.5rem;right:0}",
+	".bs-carousel-box:hover>.bs-carousel-arrow{opacity:1}"
 ]]]));
 function buildItem(data) {
 	const temp = [];
-	if ("image" in data) temp.push(["div", null, { class: "bs-carousel_item_image", style: `background-image:url("${data.image}")` }]);
-	if ("text" in data) temp.push(["div", data.text, { class: "bs-carousel_item_text", title: data.text }]);
-	var item = ["div", temp, { class: "bs-carousel_item" }, "item"];
-	const action = data.action, attribute = item[2];
+	if ("image" in data) temp.push(["div", null, { class: "bs-carousel-item-image", style: `background-image:url("${data.image}")` }]);
+	if ("text" in data) temp.push(["div", data.text, { class: "bs-carousel-item-text", title: data.text }]);
+	const item = ["div", temp, { class: "bs-carousel-item" }, "item"], action = data.action, attribute = item[2];
 	switch (typeof action) {
 		case "function":
 			attribute.class += " action";
-			item = ArrayHTML([item], true).nodes.item;
-			item.addEventListener("click", action);
+			attribute[EVENT_LISTENERS] = [["click", action]];
 			break;
 		case "string":
 			item[0] = "a";
 			attribute.href = action;
 			attribute.class += " action";
-			attribute.target = "_blank";
+			attribute.target = "-blank";
 		default:
 	}
 	return item;
@@ -108,28 +106,28 @@ class Carousel {
 		if (!Array.isArray(data)) throw new TypeError("Failed to construct 'Carousel': Argument 'data' is not an array.");
 		const items = data.filter(filter).map(buildItem);
 		const number = this.#size = items.length;
-		const paginations = [["div", null, { class: "bs-carousel_paginations_float" }, "float"]];
-		for (let i = 0; i < number; ++i) paginations.push(["input", null, { type: "radio", class: "bs-carousel_paginations_item", name: "bs-carousel_page", value: i }]);
-		const nodes = ArrayHTML([["div", [
-			["div", items, { class: "bs-carousel_scroll" }, "scroll"],
-			["form", paginations, { class: "bs-carousel_paginations" }, "navi"],
-			["button", "<", { class: "bs-carousel_arrow prev" }, "prevButton"],
-			["button", ">", { class: "bs-carousel_arrow next" }, "nextButton"]
-		], { class: "bs-carousel_box" }, "box"]], true).nodes;
+		const paginations = [["div", null, { class: "bs-carousel-paginations-float" }, "float"]];
+		for (let i = 0; i < number; ++i) paginations.push(["input", null, { type: "radio", class: "bs-carousel-paginations-item", name: "bs-carousel-page", value: i }]);
+		const nodes = parseAndGetNodes([["div", [
+			["div", items, { class: "bs-carousel-scroll" }, "scroll"],
+			["form", paginations, { class: "bs-carousel-paginations", [EVENT_LISTENERS]: [["change", this.#formChange.bind(this), { passive: true }]] }, "navi"],
+			["button", "<", { class: "bs-carousel-arrow prev", [EVENT_LISTENERS]: [["click", this.#prev.bind(this), { passive: true }]] }],
+			["button", ">", { class: "bs-carousel-arrow next", [EVENT_LISTENERS]: [["click", this.#next.bind(this), { passive: true }]] }]
+		], {
+			class: "bs-carousel-box", [EVENT_LISTENERS]: [
+				["mouseenter", this.#pause.bind(this), { passive: true }],
+				["mouseleave", this.#resume.bind(this), { passive: true }]
+			]
+		}, "box"]]).nodes;
 		const box = this.#box = nodes.box;
 		if (number < 2) {
 			box.className += "single";
 			return;
 		}
 		this.#float = nodes.float.style;
-		const navi = this.#navi = nodes.navi, { prevButton, nextButton } = nodes;
-		this.#pagination = navi.elements["bs-carousel_page"];
+		const navi = this.#navi = nodes.navi;
+		this.#pagination = navi.elements["bs-carousel-page"];
 		this.#scroll = nodes.scroll.style;
-		navi.addEventListener("change", this.#formChange.bind(this), { passive: true });
-		box.addEventListener("mouseenter", this.#pause.bind(this), { passive: true });
-		box.addEventListener("mouseleave", this.#resume.bind(this), { passive: true });
-		prevButton.addEventListener("click", this.#prev.bind(this), { passive: true });
-		nextButton.addEventListener("click", this.#next.bind(this), { passive: true });
 		if (start) this.#start();
 	}
 	get element() { return this.#box }
