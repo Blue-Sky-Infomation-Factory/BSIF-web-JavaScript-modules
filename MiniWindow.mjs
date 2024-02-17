@@ -38,15 +38,15 @@ const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent,
 			"#mini-window .mini-window-hr{box-sizing:border-box;width:100%;border:solid 0.0625rem var(--mini-window-text-color);border-radius:0.0625rem;background-color:var(--mini-window-text-color)}",
 			"#mini-window .mini-window-input{box-sizing:border-box;height:2rem;border: 0.0625rem solid var(--mini-window-interactive-color);border-radius:0.25rem;color:var(--mini-window-text-color);font-size:inherit;padding-inline:0.375rem;background-color:var(--mini-window-background-color)}",
 			"#mini-window .mini-window-input:focus{outline-color:var(--mini-window-interactive-active-color) 0.125rem auto}",
-			// sub window components
+			// build-in components
 			"#mini-window-sub-content-frame{display:grid;gap:0.5rem;grid-template-rows:1fr}",
 			"#mini-window-sub-content-frame.wait{grid-template-columns:2rem 1fr;place-items:center start}",
-			"#mini-window-sub-message{overflow:hidden auto;word-break:break-word}",
-			"#mini-window-sub-buttons{display:grid;grid-auto-columns:minmax(auto,6rem);grid-auto-flow:column;gap:0.5rem;justify-self:end}",
-			"#mini-window-sub-buttons>.mini-window-button{font-weight:bold}",
-			"#mini-window-sub-cycle,#mini-window-sub-cycle::before{width:2rem;height:2rem}",
-			"@keyframes mini-window-sub-cycle{from{transform:rotate(0)}to{transform:rotate(1turn)}}",
-			"#mini-window-sub-cycle::before{display:block;content:\"\";box-sizing:border-box;background-color:transparent;border:solid 0.125rem;border-color:#0080FF #0080FF transparent transparent;border-radius:50%;transform-origin:center;animation:mini-window-sub-cycle 1s linear infinite forwards running}"
+			".mini-window-message{overflow:hidden auto;word-break:break-word}",
+			".mini-window-buttons{display:grid;grid-auto-columns:minmax(auto,6rem);grid-auto-flow:column;gap:0.5rem;justify-self:end}",
+			".mini-window-buttons>.mini-window-button{font-weight:bold}",
+			".mini-window-cycle,.mini-window-cycle::before{width:2rem;height:2rem}",
+			"@keyframes mini-window-cycle{from{transform:rotate(0)}to{transform:rotate(1turn)}}",
+			".mini-window-cycle::before{display:block;content:\"\";box-sizing:border-box;background-color:transparent;border:solid 0.125rem;border-color:#0080FF #0080FF transparent transparent;border-radius:50%;transform-origin:center;animation:mini-window-cycle 1s linear infinite forwards running}"
 		]],
 		["div", [
 			["div", [
@@ -201,8 +201,8 @@ class MiniWindow extends EventTarget {
 		if (typeof message != "string") throw new TypeError("Failed to execute 'alert' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const controller = new SubWindowController("alert", "提示", parse([
-			["div", message, { id: "mini-window-sub-message" }],
-			["div", [["button", "确认", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve() }, { once: true, passive: true }]] }]], { id: "mini-window-sub-buttons" }]
+			["div", message, { class: "mini-window-message" }],
+			["div", [["button", "确认", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve() }, { once: true, passive: true }]] }]], { class: "mini-window-buttons" }]
 		])), { promise, resolve } = controller.promise;
 		this.#createSub(controller);
 		return promise;
@@ -212,11 +212,11 @@ class MiniWindow extends EventTarget {
 		if (typeof message != "string") throw new TypeError("Failed to execute 'confirm' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const controller = new SubWindowController("confirm", "确认", parse([
-			["div", message, { id: "mini-window-sub-message" }],
+			["div", message, { class: "mini-window-message" }],
 			["div", [
 				["button", "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true) }, { once: true, passive: true }]] }],
 				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false) }, { once: true, passive: true }]] }]
-			], { id: "mini-window-sub-buttons" }]
+			], { class: "mini-window-buttons" }]
 		])), { resolve, promise } = controller.promise;
 		this.#createSub(controller);
 		return promise;
@@ -226,8 +226,8 @@ class MiniWindow extends EventTarget {
 		if (typeof message != "string") throw new TypeError("Failed to execute 'wait' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const controller = new SubWindowController("wait", "请等待", parse([
-			["div", null, { id: "mini-window-sub-cycle" }],
-			["div", message, { id: "mini-window-sub-message" }]
+			["div", null, { class: "mini-window-cycle" }],
+			["div", message, { class: "mini-window-message" }]
 		]));
 		this.#createSub(controller);
 		return controller.promise.resolve;
@@ -237,12 +237,12 @@ class MiniWindow extends EventTarget {
 		if (typeof message != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const { documentFragment, nodes: { input } } = parseAndGetNodes([
-			["div", message, { id: "mini-window-sub-message" }],
+			["div", message, { class: "mini-window-message" }],
 			["input", null, { class: 'mini-window-input' }, 'input'],
 			["div", [
 				["button", "确定", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(input.value) }, { once: true, passive: true }]] }],
 				["button", "取消", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { reject(new DOMException("User canceled.", "UserCanceled")) }, { once: true, passive: true }]] }]
-			], { id: "mini-window-sub-buttons" }]
+			], { class: "mini-window-buttons" }]
 		])
 		const controller = new SubWindowController("prompt", "输入", documentFragment), { resolve, reject, promise } = controller.promise;
 		this.#createSub(controller);
@@ -259,21 +259,12 @@ class MiniWindow extends EventTarget {
 		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'confirm': Argument 'content' is not a string or HTML node.");
 		if (typeof title != "string") title = "确认";
 		const { promise, resolve } = new PromiseAdapter, miniWindow = new this(parse([
-			["div", content, { id: "mini-window-confirm-descriptions" }],
+			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-rows:1fr}"],
+			["div", content, { class: "mini-window-message" }],
 			["div", [
-				["button", "是", {
-					class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => {
-						resolve(true);
-						miniWindow.close();
-					}, { once: true, passive: true }]]
-				}],
-				["button", "否", {
-					class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => {
-						resolve(false);
-						miniWindow.close();
-					}, { once: true, passive: true }]]
-				}]
-			], { id: "mini-window-confirm-buttons" }]
+				["button", "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true); miniWindow.close() }, { once: true, passive: true }]] }],
+				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false); miniWindow.close() }, { once: true, passive: true }]] }]
+			], { class: "mini-window-buttons" }]
 		], true), title, { noManualClose: true, size: { width: "384px" } });
 		return promise;
 	}
