@@ -101,7 +101,7 @@ declare class MiniWindow extends EventTarget {
 	 * @returns A promise that resolves to the user input.
 	 * @throws {DOMException} User clicked the cancel button.
 	 */
-	prompt(message: string): Promise<string>;
+	prompt(message: string, defaultText?: string): Promise<string>;
 	/**
 	 * Shows a confirmation dialog with custom content and title.
 	 * @static
@@ -110,6 +110,8 @@ declare class MiniWindow extends EventTarget {
 	 * @returns A promise that resolves to true when the confirmation is accepted, and false when declined.
 	 */
 	static confirm(content: string | Node, title = "确认"): Promise<boolean>;
+	static wait(message: string): () => void;
+	static prompt(message: string, defaultText?: string): Promise<string>;
 }
 declare function remove(): void;
 declare function reload(): void;

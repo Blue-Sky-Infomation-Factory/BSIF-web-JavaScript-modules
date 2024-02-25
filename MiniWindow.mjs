@@ -37,7 +37,7 @@ const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent,
 			"#mini-window .mini-window-button:active:focus{background-color:var(--mini-window-interactive-active-color);color:var(--mini-window-interactive-active-text-color)}",
 			"#mini-window .mini-window-hr{box-sizing:border-box;width:100%;border:solid 0.0625rem var(--mini-window-text-color);border-radius:0.0625rem;background-color:var(--mini-window-text-color)}",
 			"#mini-window .mini-window-input{box-sizing:border-box;height:2rem;border: 0.0625rem solid var(--mini-window-interactive-color);border-radius:0.25rem;color:var(--mini-window-text-color);font-size:inherit;padding-inline:0.375rem;background-color:var(--mini-window-background-color)}",
-			"#mini-window .mini-window-input:focus{outline-color:var(--mini-window-interactive-active-color) 0.125rem auto}",
+			"#mini-window .mini-window-input:focus{outline:var(--mini-window-interactive-active-color) 0.125rem auto}",
 			// build-in components
 			"#mini-window-sub-content-frame{display:grid;gap:0.5rem;grid-template-rows:1fr}",
 			"#mini-window-sub-content-frame.wait{grid-template-columns:2rem 1fr;place-items:center start}",
@@ -198,6 +198,7 @@ class MiniWindow extends EventTarget {
 	}
 	alert(message) {
 		MiniWindow.#checkInstance(this);
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'alert' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'alert' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const controller = new SubWindowController("alert", "提示", parse([
@@ -209,6 +210,7 @@ class MiniWindow extends EventTarget {
 	}
 	confirm(message) {
 		MiniWindow.#checkInstance(this);
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'confirm' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const controller = new SubWindowController("confirm", "确认", parse([
@@ -223,6 +225,7 @@ class MiniWindow extends EventTarget {
 	}
 	wait(message) {
 		MiniWindow.#checkInstance(this);
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'wait' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'wait' on 'MiniWindow': Argument 'message' is not a string.");
 		this.#subWindowCheck();
 		const controller = new SubWindowController("wait", "请等待", parse([
@@ -232,13 +235,15 @@ class MiniWindow extends EventTarget {
 		this.#createSub(controller);
 		return controller.promise.resolve;
 	}
-	prompt(message) {
+	prompt(message, defaultText = "") {
 		MiniWindow.#checkInstance(this);
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'message' is not a string.");
+		if (typeof defaultText != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'defaultText' is not a string.");
 		this.#subWindowCheck();
 		const { documentFragment, nodes: { input } } = parseAndGetNodes([
 			["div", message, { class: "mini-window-message" }],
-			["input", null, { class: 'mini-window-input' }, 'input'],
+			["input", null, { class: 'mini-window-input', value: defaultText }, 'input'],
 			["div", [
 				["button", "确定", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(input.value) }, { once: true, passive: true }]] }],
 				["button", "取消", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { reject(new DOMException("User canceled.", "UserCanceled")) }, { once: true, passive: true }]] }]
@@ -258,7 +263,7 @@ class MiniWindow extends EventTarget {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm': 1 argument required, but only 0 present.");
 		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'confirm': Argument 'content' is not a string or HTML node.");
 		if (typeof title != "string") title = "确认";
-		const { promise, resolve } = new PromiseAdapter, miniWindow = new this(parse([
+		const { promise, resolve } = new PromiseAdapter, miniWindow = new MiniWindow(parse([
 			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-rows:1fr}"],
 			["div", content, { class: "mini-window-message" }],
 			["div", [
@@ -266,6 +271,30 @@ class MiniWindow extends EventTarget {
 				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false); miniWindow.close() }, { once: true, passive: true }]] }]
 			], { class: "mini-window-buttons" }]
 		], true), title, { noManualClose: true, size: { width: "384px" } });
+		return promise;
+	}
+	static wait(message) {
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'wait' on 'MiniWindow': 1 argument required, but only 0 present.");
+		if (typeof message != "string") throw new TypeError("Failed to execute 'wait' on 'MiniWindow': Argument 'message' is not a string.");
+		return closeInstance.bind(null, new MiniWindow(parse([
+			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-columns:2rem 1fr;place-items:center start}"],
+			["div", null, { class: "mini-window-cycle" }],
+			["div", message, { class: "mini-window-message" }]
+		]), "请等待", { noManualClose: true }).#controller);
+	}
+	static prompt(message, defaultText = "") {
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': 1 argument required, but only 0 present.");
+		if (typeof message != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'message' is not a string.");
+		if (typeof defaultText != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'defaultText' is not a string.");
+		const { documentFragment, nodes: { input } } = parseAndGetNodes([
+			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-rows:1fr}"],
+			["div", message, { class: "mini-window-message" }],
+			["input", null, { class: 'mini-window-input', value: defaultText }, 'input'],
+			["div", [
+				["button", "确定", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); resolve(input.value) }, { once: true, passive: true }]] }],
+				["button", "取消", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); reject(new DOMException("User canceled.", "UserCanceled")) }, { once: true, passive: true }]] }]
+			], { class: "mini-window-buttons" }]
+		]), { resolve, reject, promise } = new PromiseAdapter, miniWindow = new MiniWindow(documentFragment, "输入", { noManualClose: true, size: { width: "384px" } });
 		return promise;
 	}
 }

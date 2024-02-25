@@ -1,4 +1,4 @@
-const key = Symbol("privateConstructor"),
+const key = Symbol("privateConstructor"), pool = new WeakMap,
 	encapsulateRequest = Function.prototype.bind.bind(function encapsulateRequest(request, resolve, reject) {
 		request.addEventListener("success", function (event) { resolve(event.target.result) });
 		request.addEventListener("error", function (event) { reject(event.target.error) });
@@ -13,7 +13,6 @@ class IndexedDatabase {
 		if (privateInvoke != key) throw new TypeError("Illegal invacation");
 		this.#db = db;
 	}
-	static #pool = new WeakMap;
 	static open(name, version = undefined, onUpgradeNeeded = undefined, onBlocked = undefined) {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'open': 1 argument required, but only 0 present.");
 		if (typeof name != "string") throw new TypeError("Failed to execute 'open': Argument 'name' is not a string.");
@@ -29,7 +28,7 @@ class IndexedDatabase {
 		if (onUpgradeNeeded) request.addEventListener("upgradeneeded", function (event) { onUpgradeNeeded(new IndexedDatabaseUpgrader(key, event.target.result, event.oldVersion, event.newVersion)) });
 		return new Promise((resolve, reject) => {
 			request.addEventListener("success", function (event) {
-				const db = event.target.result, pool = IndexedDatabase.#pool, cache = pool.get(db);
+				const db = event.target.result, cache = pool.get(db);
 				if (cache) { resolve(cache) } else {
 					const instance = new IndexedDatabase(key, db);
 					pool.set(db, instance);
@@ -212,6 +211,7 @@ class IndexedDatabase {
 	}
 	#restarting;
 	restart(version = undefined, onUpgradeNeeded = undefined, onBlocked = undefined) {
+		IndexedDatabase.#checkInstance(this);
 		if (arguments.length > 0) {
 			if (!(Number.isInteger(version) && version > 0)) throw new TypeError("Failed to execute 'restart' on 'IndexedDatabase': Argument 'version' must be integer and greater than 0.");
 			if (arguments.length > 1) {
@@ -226,7 +226,7 @@ class IndexedDatabase {
 		if (onUpgradeNeeded) request.addEventListener("upgradeneeded", function (event) { onUpgradeNeeded(new IndexedDatabaseUpgrader(key, event.target.result, event.oldVersion, event.newVersion)) });
 		return this.#restarting = new Promise((resolve, reject) => {
 			request.addEventListener("success", event => {
-				IndexedDatabase.#pool.set(this.#db = event.target.result, this);
+				pool.set(this.#db = event.target.result, this);
 				this.#restarting = undefined;
 				resolve();
 			});

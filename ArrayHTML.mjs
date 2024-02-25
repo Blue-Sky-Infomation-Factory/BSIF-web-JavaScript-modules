@@ -1,4 +1,4 @@
-const EVENT_LISTENERS = Symbol("event listeners property");
+const EVENT_LISTENERS = Symbol("event listeners"), OBJECT_PROPERTIES = Symbol("object properties");
 function parseCollection(data, outer, collector) {
 	if (!Array.isArray(data)) throw new TypeError("Parse error: Non-Array object");
 	for (let item of data) {
@@ -20,24 +20,24 @@ function parseCollection(data, outer, collector) {
 		}
 	}
 }
-function parseStyleObject(node, object) {
-	const styleObject = node.style;
+function parseStyleObject(element, object) {
+	const styleObject = element.style;
 	for (let index in object) styleObject[index] = [object[index]];
 }
-function parseAttribute(node, attributeName, data) {
+function parseAttribute(element, attributeName, data) {
 	switch (attributeName) {
 		case "style":
 			if (data instanceof Object) {
-				parseStyleObject(node, data);
+				parseStyleObject(element, data);
 				return;
 			}
 			break;
 		case "class":
-			node.setAttribute("class", Array.isArray(data) ? data.join(" ") : data);
+			element.setAttribute("class", Array.isArray(data) ? data.join(" ") : data);
 			return;
 		default:
 	}
-	node.setAttribute(attributeName, data)
+	element.setAttribute(attributeName, data);
 }
 function parseContent(node, content, collector) {
 	switch (typeof content) {
@@ -83,6 +83,7 @@ function parseNode(data, outer, collector) {
 			if (attributes instanceof Object) {
 				for (const attribute in attributes) try { parseAttribute(node, attribute, attributes[attribute]) } catch (error) { console.warn("Parse error: Failed to set attribute", attribute, "to", attributes[attribute], "on", node, `\n${error.name}: ${error.message}`) };
 				if (EVENT_LISTENERS in attributes) for (const item of attributes[EVENT_LISTENERS]) node.addEventListener(...item);
+				if (OBJECT_PROPERTIES in attributes) Object.assign(node, attributes[OBJECT_PROPERTIES]);
 			}
 			parseContent(node, content, collector);
 		}
@@ -140,4 +141,4 @@ function serialize(node, onlyChildren = false) {
 	if (onlyChildren) { serializeIterator(node, ArrayHtml) } else { serializeNode(node, ArrayHtml) }
 	return ArrayHtml;
 }
-export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS }
+export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES }

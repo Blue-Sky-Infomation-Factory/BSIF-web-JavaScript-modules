@@ -1,4 +1,5 @@
-declare const EVENT_LISTENERS: unique symbol;
+declare const EVENT_LISTENERS: unique symbol,
+	OBJECT_PROPERTIES: unique symbol;
 type AddDOMEventListenerParameters = [
 	keyof HTMLElementEventMap,
 	((this: HTMLElement, event: HTMLElementEventMap[keyof HTMLElementEventMap]) => any) | EventListenerObject,
@@ -16,6 +17,7 @@ type ArrayHTMLElementNode = [
 		style?: Partial<CSSStyleDeclaration> | string,
 		class?: string[] | string,
 		[EVENT_LISTENERS]?: (AddDOMEventListenerParameters | AddCustomEventListenerParameters)[],
+		[OBJECT_PROPERTIES]?: object,
 		[key: string]: any
 	}?,
 	string?
@@ -43,4 +45,4 @@ declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection): {
 	nodes: CaughtNodes
 };
 declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection, appendTo: Node): CaughtNodes;
-export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS }
+export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES }
