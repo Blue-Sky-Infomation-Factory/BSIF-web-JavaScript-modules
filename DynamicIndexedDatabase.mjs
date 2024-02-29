@@ -1,11 +1,12 @@
 import IndexedDatabase from "./IndexedDatabase.mjs";
 import PromiseAdapter from "./PromiseAdapter.mjs";
-const key = Symbol("privateConstructor");
 class DynamicIndexedDatabase {
 	static #checkInstance(instance) { if (!(instance instanceof this)) throw new TypeError("Illegal invocation") }
 	#db;
-	constructor(privateInvoke, db) {
-		if (privateInvoke != key) throw new TypeError("Illegal invacation");
+	static #rejectConstruct = true;
+	constructor(db) {
+		if (DynamicIndexedDatabase.#rejectConstruct) throw new TypeError("Illegal constructor");
+		DynamicIndexedDatabase.#rejectConstruct = true;
 		this.#db = db;
 	}
 	static #pool = new WeakMap;
@@ -14,7 +15,8 @@ class DynamicIndexedDatabase {
 		if (typeof name != "string") throw new TypeError("Failed to execute 'open': Argument 'name' is not a string.");
 		const db=await IndexedDatabase.open(name),pool = this.#pool, cache=pool.get(db);
 		if (cache) return cache;
-		const instance = new DynamicIndexedDatabase(key,db);
+		DynamicIndexedDatabase.#rejectConstruct = false;
+		const instance = new DynamicIndexedDatabase(db);
 		pool.set(db, instance);
 		return instance;
 	}
