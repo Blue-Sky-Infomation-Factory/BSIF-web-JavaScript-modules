@@ -4,6 +4,6 @@ import { extractFrames } from "./Frame.mjs"
 declare class FLAC {
 	context: BufferContext;
 	metadataBlocks: ReturnType<typeof allMetadataBlock>;
-	frames: ReturnType<typeof extractFrames>;
+	frames: ReturnType<typeof extractFrames> | null;
 }
 declare function extract(data: Uint8Array, extractFrames = false): FLAC;

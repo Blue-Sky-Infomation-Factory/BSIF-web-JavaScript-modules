@@ -192,7 +192,7 @@ function extractRice(context, codingMethod, buffer) {
 			let n = 0;
 			while (!readBits(context, 1)) ++n;
 			const value = (n << parameter) | readBits(context, parameter);
-			buffer[i] = value & 1 ? value >> 1 ^ -1 : value >> 1;
+			buffer[i] = value & 1 ? ~(value >> 1) : value >> 1;
 		}
 	}
 }
