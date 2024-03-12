@@ -3,7 +3,7 @@ import "./PromiseWithResolvers.mjs";
 const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent, contentFrame, subLayer, subTitle, subFrame, subBody } = parseAndGetNodes([
 	["div", [
 		["style", [
-			"#mini-window-layer,#mini-window-sub-layer{top:0;bottom:0;left:0;right:0;z-index:1073741823;display:none}",
+			"#mini-window-layer,#mini-window-sub-layer{top:0;bottom:0;left:0;right:0;z-index:1073741824;display:none}",
 			"#mini-window-layer{position:fixed;background-color:rgba(0,0,0,0.7)}",
 			"#mini-window-sub-layer{position:absolute}",
 			"#mini-window,#mini-window-sub{box-sizing:border-box;place-self:center;min-width:16rem;min-height:8rem;max-width:80%;max-height:80%;overflow:hidden;border-radius:0.75rem;padding:0.75rem;display:grid;grid-template-rows:1.25rem auto 1fr;background-color:var(--mini-window-background-color);color:var(--mini-window-text-color);font-size:0.9375rem;user-select:text}",
