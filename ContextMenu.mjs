@@ -1,18 +1,25 @@
 import { EVENT_LISTENERS, parse } from "./ArrayHTML.mjs";
 document.head.appendChild(parse([
 	["style", [
-		""
+		".context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 rgb(0, 0, 0, 0.25);font-size:14px;font-family:ui-sans-serif;display:grid;grid-auto-rows:28px;gap:4px;outline:0}",
+		".context-menu-item{display:grid;grid-template-columns:28px 1fr auto 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:#000}",
+		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:#000;grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
+		".context-menu-item:hover,.context-menu-item:focus{background-color:rgb(211, 223, 233)}",
+		".context-menu-item-icon{grid-area:icon;width:16px;height:16px;place-self:center;overflow:hidden}",
+		".context-menu-item-icon.image{background-size:cover;background-position:center}",
+		".context-menu-item-icon.font{font-size:16px}",
+		".context-menu-item-checkbox{grid-area:icon;place-self:center}",
+		".context-menu-item-text{grid-area:text;align-self:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:initial}",
+		".context-menu-item-keys{grid-area:keys;align-self:center;color:#888}"
 	]]
 ]));
-
-
 const drawContext = document.createElement("canvas").getContext("2d");
 drawContext.font = "14px ui-sans-serif";
 // drawContext.measureText()
 function showMenu(list, anchor = null, darkStyle = false) {
 
-	const {documentFragment, maxItemWidth, itemsHeight} = buildList(list, darkStyle);
-	debugger;
+	const { documentFragment, maxItemWidth, itemsHeight } = buildList(list, darkStyle);
+	document.body.appendChild(documentFragment)
 
 }
 function buildList(list, darkStyle) {
@@ -56,7 +63,7 @@ function buildList(list, darkStyle) {
 		groupHr = true;
 	}
 	return {
-		documentFragment: parse(temp),
+		documentFragment: parse([["div", temp, { class: "context-menu-list" }]]),
 		maxItemWidth,
 		itemsHeight
 	}
