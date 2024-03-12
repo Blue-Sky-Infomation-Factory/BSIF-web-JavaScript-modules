@@ -17,14 +17,21 @@ type FontIcon = {
 type IconItem = {
 	icon?: ImageIcon | SpriteIcon | FontIcon
 } & CommonItem;
+type KeySet = {
+	key: string,
+	ctrl?: boolean,
+	shift?: boolean,
+	alt?: boolean
+}
 type MenuItem = {
 	type: "item",
-	onclick: () => any;
+	onselect?: () => any,
+	keys?: KeySet
 } & IconItem;
 type CheckItem = {
 	type: "check-item",
 	state: boolean,
-	onclick: (toState: boolean) => any;
+	onselect?: (toState: boolean) => any;
 }
 type ContainerItemTypes = MenuItem | CheckItem | SubList;
 type Group = {
