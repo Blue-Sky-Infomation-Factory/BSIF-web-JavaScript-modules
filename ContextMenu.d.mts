@@ -5,9 +5,9 @@ type UrlBase = { url: string };
 type ImageIcon = { type: "image" } & UrlBase;
 type SpriteIcon = {
 	type: "sprite",
-	resourceSize: number[],
-	x: number,
-	y: number
+	resourceSize: [number, number],
+	x?: number,
+	y?: number
 } & UrlBase;
 type FontIcon = {
 	type: "font",
@@ -32,7 +32,7 @@ type CheckItem = {
 	type: "check-item",
 	state: boolean,
 	onselect?: (toState: boolean) => any;
-}
+} & CommonItem;
 type ContainerItemTypes = MenuItem | CheckItem | SubList;
 type Group = {
 	type: "group",
