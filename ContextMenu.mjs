@@ -7,7 +7,7 @@ document.head.appendChild(parse([
 
 
 const drawContext = document.createElement("canvas").getContext("2d");
-drawContext.font = "0.875rem 'Microsoft YaHei UI', 'Segoe UI', 'Abattis Cantarell'";
+drawContext.font = "14px ui-sans-serif";
 // drawContext.measureText()
 function showMenu(list, anchor = null, darkStyle = false) {
 	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'showMenu': Argument 'list' must be an array.");
