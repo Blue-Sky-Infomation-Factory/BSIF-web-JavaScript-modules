@@ -1,71 +1,89 @@
 import { EVENT_LISTENERS, parse } from "./ArrayHTML.mjs";
+const root = document.documentElement,
+	font = "12px ui-sans-serif",
+	drawContext = document.createElement("canvas").getContext("2d");
+drawContext.font = font;
 document.head.appendChild(parse([
 	["style", [
-		".context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 rgb(0, 0, 0, 0.25);font-size:14px;font-family:ui-sans-serif;display:grid;grid-auto-rows:28px;gap:4px;outline:0}",
-		".context-menu-item{display:grid;grid-template-columns:28px 1fr auto 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:#000}",
+		`.context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;left:0;top:0;user-select:none}`,
+		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
+		".context-menu-empty{opacity:0.5;place-content:center}",
+		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+		".context-menu-item,.context-menu-empty{height:28px;display:grid}",
 		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:#000;grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
-		".context-menu-item:hover,.context-menu-item:focus{background-color:rgb(211, 223, 233)}",
+		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-item:active,.context-menu-item.active{background-color:#D3DFE9}",
+		".context-menu-item:disabled{opacity:0.5;pointer-events:none}",
 		".context-menu-item-icon{grid-area:icon;width:16px;height:16px;place-self:center;overflow:hidden}",
 		".context-menu-item-icon.image{background-size:cover;background-position:center}",
 		".context-menu-item-icon.font{font-size:16px}",
-		".context-menu-item-checkbox{grid-area:icon;place-self:center}",
-		".context-menu-item-text{grid-area:text;align-self:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:initial}",
-		".context-menu-item-keys{grid-area:keys;align-self:center;color:#888}"
+		".context-menu-item-checkbox{grid-area:icon;place-self:center;outline:0;cursor:pointer}",
+		".context-menu-item-text{grid-area:text;align-self:center}",
+		".context-menu-item-keys{grid-area:keys;align-self:center;text-align:right;color:#888}",
+		".context-menu-hr{border:0;background-color:#909090;height:1px;width:100%;margin:0}"
 	]]
 ]));
-const drawContext = document.createElement("canvas").getContext("2d");
-drawContext.font = "14px ui-sans-serif";
-// drawContext.measureText()
 function showMenu(list, anchor = null, darkStyle = false) {
 
 	const { documentFragment, maxItemWidth, itemsHeight } = buildList(list, darkStyle);
-	document.body.appendChild(documentFragment)
+	document.body.appendChild(documentFragment);
+	console.log(maxItemWidth, itemsHeight)
 
 }
 function buildList(list, darkStyle) {
 	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildList': Argument 'list' must be an array.");
-	const temp = [];
-	var groupHr = false, maxItemWidth = 0, itemsHeight = 0;
+	const temp = [], length = list.length;
+	if (!length) return {
+		maxItemWidth: buildEmpty(temp) + 8,
+		documentFragment: parse([["div", temp, { class: "context-menu-list", tabindex: "1" }]]),
+		itemsHeight: 36
+	};
+	var insertHr = false, previousHr = false, maxItemWidth = 0, itemsHeight = 0;
 	for (const item of list) {
 		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildList': Elements of list must be objects.");
+		let itemWidth;
+		if (insertHr) {
+			temp.push(["hr", null, { class: "context-menu-hr" }]);
+			itemsHeight += 5;
+			insertHr = previousHr = false;
+		}
 		switch (item.type) {
-			case "item": {
-				const width = buildItem(item, temp);
-				if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
+			case "item":
+				itemWidth = buildItem(item, temp);
 				break;
-			}
-			case "check-item": {
-				const width = buildCheckItem(item, temp);
-				if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
+			case "check-item":
+				itemWidth = buildCheckItem(item, temp);
 				break;
-			}
 			case "group": {
 				const list = item.list;
 				if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildList': Property 'list' of item of type 'group' is not an array.");
-				if (!list.length) throw new Error("Empty group!");
-				if (groupHr) {
-					temp.push(["hr"]);
-					itemsHeight += 0;
+				if (previousHr) {
+					temp.push(["hr", null, { class: "context-menu-hr" }]);
+					itemsHeight += 5;
 				}
-				const [width, height] = buildGroup(list, temp);
-				itemsHeight += height;
-				if (width > maxItemWidth && maxItemWidth < 376) maxItemWidth = width;
+				const length = list.length;
+				if (length) {
+					itemWidth = buildGroup(list, temp);
+					itemsHeight += (length - 1) * 32;
+				} else {
+					itemWidth = buildEmpty(temp);
+				}
+				insertHr = true;
 				break;
 			}
-			case "sub-list": {
-				const width = buildSubList(item, temp);
-				if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
+			case "sub-list":
+				itemWidth = buildSubList(item, temp);
 				break;
-			}
 			default:
 				throw new TypeError(`Failed to execute 'buildList': Invalid item type '${item.type}'.`)
 		}
-		groupHr = true;
+		if (itemWidth > maxItemWidth) maxItemWidth = itemWidth < 376 ? itemWidth : 376;
+		itemsHeight += 28
+		previousHr = true;
 	}
 	return {
-		documentFragment: parse([["div", temp, { class: "context-menu-list" }]]),
-		maxItemWidth,
-		itemsHeight
+		documentFragment: parse([["div", temp, { class: "context-menu-list", tabindex: "1" }]]),
+		maxItemWidth: maxItemWidth + 8,
+		itemsHeight: itemsHeight + (length - 1) * 4 + 8
 	}
 }
 function buildKeys(data) {
@@ -73,8 +91,8 @@ function buildKeys(data) {
 	const key = data.key;
 	if (typeof key != "string" || !key) throw new Error("Failed to execute 'buildKeys': Property 'keys' of object must be a non-empty string.")
 	const keys = [];
-	if (data.alt) keys.push("Alt");
 	if (data.ctrl) keys.push("Ctrl");
+	if (data.alt) keys.push("Alt");
 	if (data.shift) keys.push("Shift");
 	keys.push(key);
 	return keys.join(" + ");
@@ -166,30 +184,30 @@ function buildSubList(data, temp) {
 	return drawContext.measureText(text).actualBoundingBoxRight + 80;
 }
 function buildGroup(data, temp) {
-	var maxItemWidth = 0, itemsHeight = 0;
+	var maxItemWidth = 0;
 	for (const item of data) {
 		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildGroup': Elements of list must be objects.");
+		let width;
 		switch (item.type) {
-			case "item": {
-				const width = buildItem(item, temp);
-				if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
+			case "item":
+				width = buildItem(item, temp);
 				break;
-			}
-			case "check-item": {
-				const width = buildCheckItem(item, temp);
-				if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
+			case "check-item":
+				width = buildCheckItem(item, temp);
 				break;
-			}
-			case "sub-list": {
-				const width = buildSubList(item, temp);
-				if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
+			case "sub-list":
+				width = buildSubList(item, temp);
 				break;
-			}
 			default:
 				throw new TypeError(`Failed to execute 'buildGroup': Invalid item type '${item.type}'.`)
 		}
+		if (width > maxItemWidth) maxItemWidth = width < 376 ? width : 376;
 	}
-	return [maxItemWidth, itemsHeight];
+	return maxItemWidth;
+}
+function buildEmpty(temp) {
+	temp.push(["div", [["span", "空"]], { class: "context-menu-empty" }]);
+	return drawContext.measureText("空").actualBoundingBoxRight;
 }
 export { showMenu, drawContext };
 export default showMenu;
