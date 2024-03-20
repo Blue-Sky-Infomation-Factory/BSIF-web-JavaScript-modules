@@ -1,5 +1,5 @@
 import { parse, parseAndGetNodes, EVENT_LISTENERS } from "./ArrayHTML.mjs";
-import PromiseAdapter from "./PromiseAdapter.mjs";
+import promiseWithResolvers from "./PromiseWithResolvers.mjs";
 const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent, contentFrame, subLayer, subTitle, subFrame, subBody } = parseAndGetNodes([
 	["div", [
 		["style", [
@@ -99,7 +99,7 @@ class MiniWindowController {
 	}
 }
 class SubWindowController {
-	promise = new PromiseAdapter;
+	promise = promiseWithResolvers();
 	type;
 	title;
 	content;
@@ -263,7 +263,7 @@ class MiniWindow extends EventTarget {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm': 1 argument required, but only 0 present.");
 		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'confirm': Argument 'content' is not a string or HTML node.");
 		if (typeof title != "string") title = "确认";
-		const { promise, resolve } = new PromiseAdapter, miniWindow = new MiniWindow(parse([
+		const { promise, resolve } = promiseWithResolvers(), miniWindow = new MiniWindow(parse([
 			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-rows:1fr}"],
 			["div", content, { class: "mini-window-message" }],
 			["div", [
@@ -294,7 +294,7 @@ class MiniWindow extends EventTarget {
 				["button", "确定", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); resolve(input.value) }, { once: true, passive: true }]] }],
 				["button", "取消", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); reject(new DOMException("User canceled.", "UserCanceled")) }, { once: true, passive: true }]] }]
 			], { class: "mini-window-buttons" }]
-		]), { resolve, reject, promise } = new PromiseAdapter, miniWindow = new MiniWindow(documentFragment, "输入", { noManualClose: true, size: { width: "384px" } });
+		]), { resolve, reject, promise } = promiseWithResolvers(), miniWindow = new MiniWindow(documentFragment, "输入", { noManualClose: true, size: { width: "384px" } });
 		return promise;
 	}
 }

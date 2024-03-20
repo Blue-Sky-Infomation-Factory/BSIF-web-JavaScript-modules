@@ -1,7 +1,7 @@
-import PromiseAdapter from "./PromiseAdapter.mjs";
+import promiseWithResolvers from "./PromiseWithResolvers.mjs";
 const factory = {}, pool = new WeakMap;
 function encapsulateRequest(request) {
-	const { promise, resolve, reject } = new PromiseAdapter;
+	const { promise, resolve, reject } = promiseWithResolvers();
 	request.addEventListener("success", function (event) { resolve(event.target.result) });
 	request.addEventListener("error", function (event) { reject(event.target.error) });
 	return promise;
