@@ -1,22 +1,34 @@
-function callHandler(thisArg, handler, parameter) { if (typeof handler == "function") try { handler.call(thisArg, parameter) } catch (error) { console.error("Uncaught", error) } }
 function buildRequest(request, options) {
 	const url = options.url;
 	if (!(typeof url == "string" || url instanceof URL)) throw new TypeError("The URL was not provided or is invalid.");
-	const async = options.async ?? true, success = typeof options.success == "function" ? options.success : null, fail = typeof options.fail == "function" ? options.fail : null, done = typeof options.done == "function" ? options.done : null;
+	const async = options.async ?? true,
+		{ success, fail, done, error, abort } = options,
+		successChecked = typeof options.success == "function",
+		failChecked = typeof options.fail == "function",
+		doneChecked = typeof options.done == "function";
 	request.open(options.method ?? "GET", url, async, options.username, options.password);
 	if (async) {
-		if ("type" in options) request.responseType = options.type;
+		if ("responseType" in options) request.responseType = options.responseType;
 		if ("timeout" in options) request.timeout = options.timeout;
 	}
-	if ("cache" in options && !options.cache) request.setRequestHeader("Cache-Control", "no-cache");
-	request.ontimeout = function () { callHandler(this, fail, this.status) };
-	request.onabort = options.abort;
-	request.onerror = options.error;
-	request.onload = function () {
+	if ("allowCache" in options && !options.allowCache) request.setRequestHeader("Cache-Control", "no-store");
+	if ("headers" in options) for (const [name, value] of parseHeaders(options.headers)) request.setRequestHeader(name, value);
+	if (failChecked) request.ontimeout = function () { fail.call(this, "timeout") };
+	if (typeof abort == "function") request.onabort = function () { abort.call(this, "abort") };
+	if (typeof error == "function") request.onerror = function () { error.call(this, "error") };
+	if (successChecked || failChecked || doneChecked) request.onload = function () {
 		const status = this.status;
-		if ((status >= 200 && status < 300) || status == 304) { callHandler(this, success, this.response) } else callHandler(this, fail, status);
-		callHandler(this, done, status);
+		if ((status >= 200 && status < 300) || status == 304) {
+			if (successChecked) try { success.call(this, this.response) } catch (error) { console.error("Uncaught", error) };
+		} else if (failChecked) try { fail.call(this, status) } catch (error) { console.error("Uncaught", error) };
+		if (doneChecked) done.call(this, status);
 	};
+}
+function parseHeaders(headers) {
+	if (!(headers instanceof Object)) throw new TypeError("Failed to execute 'parseHeaders': Invalid headers type.");
+	if (headers instanceof Headers || headers instanceof Map) return headers.entries();
+	if (Array.isArray(headers)) return headers;
+	return Object.entries(headers);
 }
 function parseData(data) {
 	if (!(data instanceof Object)) return data;
@@ -32,55 +44,50 @@ function ajax(options) {
 	if (!(options instanceof Object)) throw new TypeError("Failed to execute 'ajax': Argument 'options' is not an object.");
 	const xhr = new XMLHttpRequest;
 	buildRequest(xhr, options);
-	if (!options.noSend) xhr.send(parseData(options.data));
+	if (!options.noSend) xhr.send(parseData(options.body));
 	return xhr;
 }
-function getJSON(url, callback, allowCache = true, fail = null) { return ajax({ url, type: "json", fail, error: fail, success: callback, cache: allowCache }) }
-function getXML(url, callback, allowCache = true, fail = null) { return ajax({ url, type: "document", fail, error: fail, success: callback, cache: allowCache }) }
-function postJSON(url, data, callback, fail = null) { return ajax({ url, method: "post", type: "json", data, fail, error: fail, success: callback }) }
-async function subLoadProcessor(element, allowCache, loader, processor, abortHandlerSetter) {
-	const response = await loader(element, allowCache, abortHandlerSetter);
-	if (response) processor(element, response);
+const responseTypes = ["text", "json", "arrayBuffer", "blob", "document"];
+function get(url, success, responseType = "text", allowCache = true, fail = null) {
+	if (!responseTypes.includes(responseType)) throw new TypeError(`Failed to execute 'get': Unsupported response type '${responseType}'.`);
+	return ajax({ url, responseType, fail, error: fail, success, allowCache })
 }
-function loadSubResource(element, allowCache, loader, processor) {
-	var abort;
-	return { promise: subLoadProcessor(element, allowCache, loader, processor, function (handler) { abort = handler }), abort() { if (typeof abort == "function") abort() } };
-}
-function downloader(url, allowCache, onfinish, abortHandlerSetter) {
-	function onReject() { onfinish(false) }
-	const xhr = ajax({
-		url,
-		cache: allowCache,
-		success: onfinish,
-		fail: onReject,
-		error: onReject,
-		abort: onReject
-	});
-	abortHandlerSetter(xhr.abort.bind(xhr));
+async function promiseGet(url, responseType = "text", allowCache = true, abortSignal = null) {
+	if (!responseTypes.includes(responseType)) throw new TypeError(`Failed to execute 'promiseGet': Unsupported response type '${responseType}'.`);
+	const response = await fetch(url, { cache: allowCache ? "default" : "no-store", signal: abortSignal });
+	if (!response.ok) throw new Error(`Request failed, status: ${response.status}.`);
+	switch (responseType) {
+		case "text": return await response.text();
+		case "json": return await response.json();
+		case "document": return new DOMParser().parseFromString(await response.text(), response.headers.get("Content-Type"));
+		case "arrayBuffer": return await response.arrayBuffer();
+		case "blob": return await response.blob();
+	}
 }
 const subLoads = [
 	{
 		selector: "script[src]",
-		loader: (element, allowCache, abortHandlerSetter) => new Promise(element.type == "module" ? function (resolve) {
-			abortHandlerSetter(resolve);
-			import(element.src).finally(resolve);
-		} : function (resolve) { downloader(element.src, allowCache, resolve, abortHandlerSetter) }),
-		processor(element, response) {
-			const temp = document.createElement("script");
-			temp.appendChild(document.createTextNode(response));
-			for (let attribute of element.attributes) {
-				if (attribute.name == "src") continue;
-				temp.setAttribute(attribute.name, attribute.value)
+		async loader(element, allowCache, abortSignal) {
+			if (element.type == "module") {
+				await import(element.src);
+			} else {
+				const response = await promiseGet(element.src, "text", allowCache, abortSignal),
+					temp = document.createElement("script");
+				temp.textContent = response;
+				for (const attribute of element.attributes) {
+					if (attribute.name == "src") continue;
+					temp.setAttribute(attribute.name, attribute.value)
+				}
+				element.replaceWith(temp);
 			}
-			element.replaceWith(temp);
 		}
 	},
 	{
 		selector: "link[rel=stylesheet]",
-		loader: (element, allowCache, abortHandlerSetter) => new Promise(function (resolve) { downloader(element.href, allowCache, resolve, abortHandlerSetter) }),
-		processor(element, response) {
-			const temp = document.createElement("style");
-			temp.appendChild(document.createTextNode(response));
+		async loader(element, allowCache, abortSignal) {
+			const response = await promiseGet(element.href, "text", allowCache, abortSignal),
+				temp = document.createElement("style");
+			temp.textContent = response;
 			for (let attribute of element.attributes) {
 				switch (attribute.name) {
 					case "href":
@@ -95,6 +102,7 @@ const subLoads = [
 		}
 	}
 ];
+function subLoadsMapper(item) { return item.promise }
 class LoadRequest extends XMLHttpRequest {
 	static #checkInstance(instance) { if (!(instance instanceof this)) throw new TypeError("Illegal invocation") }
 	#done = false;
@@ -121,34 +129,46 @@ class LoadRequest extends XMLHttpRequest {
 		this.dispatchEvent(new ProgressEvent(eventType, { loaded: this.#percent, total: 100 }));
 	}
 	#blockEvent(event) { if (event.isTrusted) event.stopImmediatePropagation() }
-	#addLoaded() {
-		++this.#subResourcesLoaded;
-		this.dispatchEvent(new ProgressEvent("progress", { loaded: this.#percent, total: 100 }));
-	}
 	#abortSubResources() { for (let item of this.#subResources) item.abort() }
-	async #waitSub(item) {
-		await item.promise;
-		this.#addLoaded();
+	async #loadSubResource(loader, element, allowCache, abortSignal) {
+		try {
+			await loader(element, allowCache, abortSignal);
+		} catch (error) {
+			console.error("Uncaught", error);
+			this.dispatchEvent(new ErrorEvent("suberror", { error }));
+		}
+		++this.#subResourcesLoaded;
+		if (this.#fetching) this.dispatchEvent(new ProgressEvent("progress", { loaded: this.#percent, total: 100 }));
 	}
 	async #onBodyLoad(event) {
 		if (!event.isTrusted) return;
 		event.stopImmediatePropagation();
 		this.dispatchEvent(new ProgressEvent("progress", { loaded: 50, total: 100 }));
 		if (!this.#fetching) return;
-		const status = super.status, subResources = this.#subResources = [];
+		const status = super.status;
 		this.#subResourcesLoaded = 0;
 		if ((status >= 200 && status < 300) || status == 304) {
-			const documentFragment = this.#response = document.createRange().createContextualFragment(super.response);
-			for (const type of subLoads) for (const item of documentFragment.querySelectorAll(type.selector)) subResources.push(loadSubResource(item, this.#allowCache, type.loader, type.processor));
-			if (subResources.length) {
-				const remainTime = super.timeout > 0 ? super.timeout - (Date.now() - this.#startTime) : -1;
-				if (remainTime) {
+			const documentFragment = this.#response = document.createRange().createContextualFragment(super.response),
+				timeout = super.timeout,
+				remainTime = timeout > 0 ? timeout - (Date.now() - this.#startTime) : Infinity;
+			if (remainTime > 0) {
+				const subResources = [];
+				for (const type of subLoads) for (const item of documentFragment.querySelectorAll(type.selector)) {
+					const abortController = new AbortController;
+					subResources.push({
+						promise: this.#loadSubResource(type.loader, item, this.#allowCache, abortController.signal),
+						abort: abortController.abort.bind(abortController)
+					});
+				};
+				if (subResources.length) {
+					this.#subResources = subResources;
 					let timeoutId;
-					if (remainTime > 0) timeoutId = setTimeout(this.#abortSubResources.bind(this), remainTime);
-					await Promise.all(subResources.map(this.#waitSub.bind(this)));
+					if (remainTime < Infinity) timeoutId = setTimeout(this.#abortSubResources.bind(this), remainTime);
+					await Promise.allSettled(subResources.map(subLoadsMapper));
 					if (timeoutId) clearTimeout(timeoutId);
+					this.#subResources = null;
 					if (!this.#fetching) return;
-				} else this.#abortSubResources();
+				}
 			}
 		}
 		this.#fetching = false;
@@ -235,11 +255,11 @@ function load(url, targetElement, allowCache = true, preloadResource = true, suc
 	if (preloadResource) {
 		const loadRequest = new LoadRequest;
 		buildRequest(loadRequest, {
-			method: "GET", url, cache: Boolean(allowCache),
+			method: "GET", url, allowCache,
 			success(response) {
 				targetElement.innerHTML = "";
 				targetElement.appendChild(response);
-				callHandler(this, success, this.status);
+				if (typeof success == "function") success.call(this, this.status);
 			},
 			fail, error: fail
 		});
@@ -252,7 +272,7 @@ function load(url, targetElement, allowCache = true, preloadResource = true, suc
 			targetElement.innerHTML = "";
 			targetElement.appendChild(operator);
 		},
-		cache: Boolean(allowCache)
+		allowCache
 	});
 }
-export { ajax, getJSON, getXML, load, postJSON, buildRequest, LoadRequest }
+export { ajax, get, promiseGet, load, buildRequest, LoadRequest }

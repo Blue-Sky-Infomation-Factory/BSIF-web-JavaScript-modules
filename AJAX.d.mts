@@ -1,8 +1,8 @@
-type statusCallback<R extends XMLHttpRequest> = (this: R, status: number) => void;
-type eventCallback<R extends XMLHttpRequest> = (this: R, event: ProgressEvent) => void;
-type responseCallback<R extends XMLHttpRequest> = (this: R, response: R['response']) => void;
-type failedCallback = statusCallback | eventCallback;
-type sendType = XMLHttpRequestBodyInit | HTMLFormElement | Object | any;
+type statusCallback<R extends XMLHttpRequest> = (this: R, status: number | "timeout" | "abort" | "error") => any;
+type errorCallback<R extends XMLHttpRequest> = (this: R, error: "abort" | "error") => any;
+type responseCallback<R extends XMLHttpRequest> = (this: R, response: R['response']) => any;
+type failedCallback = statusCallback | errorCallback;
+type sendType = XMLHttpRequestBodyInit | HTMLFormElement | Object;
 type AJAXOptions = {
 	/** 请求的 URL */
 	url: string | URL,
@@ -19,24 +19,32 @@ type AJAXOptions = {
 	/** 请求完成时的回调（成功或失败） */
 	done?: statusCallback,
 	/** 请求发送错误的回调 */
-	error?: eventCallback,
+	error?: errorCallback,
 	/** 请求被中断的回调 */
-	abort?: eventCallback,
+	abort?: errorCallback,
 	/** 要将请求的响应解析为什么类型的数据 */
-	type?: XMLHttpRequestResponseType,
+	responseType?: XMLHttpRequestResponseType,
 	/** 需要发送的数据，仅在调用 ajax 函数且 noSend 不为 true 时有效 */
-	data?: sendType,
+	body?: sendType,
 	/** 请求的超时时间，超时未完成则失败，单位是毫秒 */
 	timeout?: number,
-	/** 是否允许使用浏览器缓存进行响应 */
-	cache?: boolean,
-	/** 配置请求后不立即发送，仅在调用 ajax 函数时有效 */
-	noSend?: boolean
+	/** 是否允许使用浏览器缓存 */
+	allowCache?: boolean,
+	/** 请求头 */
+	headers?: Map<string, string> | Headers | [string, string][] | { [key: string]: string },
 };
+type ajaxMethodOptions = ({
+	/** 配置请求后不立即发送 */
+	noSend?: false,
+	/** 需要发送的数据，仅在 noSend 不为 true 时有效 */
+	body?: sendType,
+} | {
+	/** 配置请求后不立即发送 */
+	noSend: true
+})
 type subLoads = {
 	selector: string,
-	loader: (element: HTMLElement, allowCache: boolean, abortHandlerSetter: (abortHandler: () => void) => void) => Promise<any>,
-	processor: (element: HTMLElement, response: any) => void
+	loader: (element: HTMLElement, allowCache: boolean, abortSignal: AbortSignal) => Promise<any>,
 };
 declare class LoadRequest extends XMLHttpRequest {
 	readonly responseType: "document-fragment";
@@ -47,39 +55,33 @@ declare class LoadRequest extends XMLHttpRequest {
 	readonly static subLoads: subLoads[];
 }
 /**
- * 发送 AJAX 请求
+ * 创建 AJAX 请求
  */
-declare function ajax(options: AJAXOptions): XMLHttpRequest;
+declare function ajax(options: ajaxMethodOptions): XMLHttpRequest;
 /**
- * 以 GET 方式发送 AJAX 请求，并以 JSON 形式获取回复
+ * 以 GET 方式发送 AJAX 请求，并以指定形式获取回复
  * @param url 请求 URL
- * @param callback 成功回调
+ * @param success 成功回调
+ * @param responseType 要将请求的响应解析为什么类型的数据
  * @param allowCache 是否允许使用浏览器缓存
  * @param fail 失败回调
+ * @returns 响应的内容
  */
-declare function getJSON(url: AJAXOptions["url"], callback: responseCallback, allowCache = true, fail?: failedCallback): XMLHttpRequest;
+declare function get(url: AJAXOptions["url"], success: responseCallback, responseType: XMLHttpRequestResponseType = "text", allowCache = true, fail?: failedCallback): XMLHttpRequest;
 /**
- * 以 GET 方式发送 AJAX 请求，并以 XML 形式获取回复
+ * 以 GET 方式发送请求，并以指定形式获取回复，回复被封装在 Promise 中。此方法的底层是 Fetch API，本方法不提供手动终止请求的手段。
  * @param url 请求 URL
- * @param callback 成功回调
+ * @param responseType 要将请求的响应解析为什么类型的数据
  * @param allowCache 是否允许使用浏览器缓存
- * @param fail 失败回调
+ * @returns 响应的内容
  */
-declare function getXML(url: AJAXOptions["url"], callback: responseCallback, allowCache = true, fail?: failedCallback): XMLHttpRequest;
+declare function promiseGet(url: AJAXOptions["url"], responseType: XMLHttpRequestResponseType = "text", allowCache = true): Promise<any>;
 /**
- * 以 POST 方式发送 AJAX 请求，并以 JSON 形式获取回复
+ * 请求一个 HTML 文档，解析为 DOM 并预载其中的某些资源
  * @param url 请求 URL
- * @param data 需要发送的数据
- * @param callback 成功回调
- * @param fail 失败回调
- */
-declare function postJSON(url: AJAXOptions["url"], data: sendType, callback: responseCallback, fail?: failedCallback): XMLHttpRequest;
-/**
- * 以 GET 方式发送 AJAX 请求，并将回复解析为 DOM 然后替换到指定元素中
- * @param url 请求 URL
- * @param targetElement 目标元素
+ * @param targetElement 请求完成后要将文档载入到哪个元素
  * @param allowCache 是否允许使用浏览器缓存
- * @param preloadResource 是否预加载 DOM 中的某些资源
+ * @param preloadResource 是否预载资源
  * @param success 成功回调
  * @param fail 失败回调
  */
@@ -97,4 +99,4 @@ declare function load(
  * @param options 选项
  */
 declare function buildRequest(request: LoadRequest | XMLHttpRequest, options: AJAXOptions): void;
-export { ajax, getJSON, getXML, load, postJSON, buildRequest, LoadRequest }
+export { ajax, get, promiseGet, load, buildRequest, LoadRequest }
