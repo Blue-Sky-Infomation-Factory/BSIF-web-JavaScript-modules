@@ -106,7 +106,7 @@ function subLoadsMapper(item) { return item.promise }
 class LoadRequest extends XMLHttpRequest {
 	static #checkInstance(instance) { if (!(instance instanceof this)) throw new TypeError("Illegal invocation") }
 	#done = false;
-	#fetching = false;
+	#fetchMission = null;
 	#allowCache = true;
 	get allowCache() { return this.#allowCache }
 	set allowCache(value) { this.#allowCache = Boolean(value) }
@@ -115,9 +115,8 @@ class LoadRequest extends XMLHttpRequest {
 	#subResourcesLoaded = 0;
 	#startTime = null;
 	get readyState() {
-		if (super.readyState != XMLHttpRequest.DONE) {
-			return super.readyState;
-		} else return this.#done ? 4 : 3;
+		const readyState = super.readyState;
+		return readyState == XMLHttpRequest.DONE ? this.#done ? XMLHttpRequest.LOADING : XMLHttpRequest.DONE : readyState;
 	}
 	get #percent() {
 		if (this.#response === null) return 0;
@@ -125,26 +124,27 @@ class LoadRequest extends XMLHttpRequest {
 		return subResourcesNumber ? 50 + this.#subResourcesLoaded / subResourcesNumber * 50 : 100;
 	}
 	#afterFail(eventType) {
-		this.#fetching = false;
+		this.#fetchMission = null;
 		this.dispatchEvent(new ProgressEvent(eventType, { loaded: this.#percent, total: 100 }));
 	}
 	#blockEvent(event) { if (event.isTrusted) event.stopImmediatePropagation() }
 	#abortSubResources() { for (let item of this.#subResources) item.abort() }
 	async #loadSubResource(loader, element, allowCache, abortSignal) {
+		const fetchMission = this.#fetchMission;
 		try {
 			await loader(element, allowCache, abortSignal);
 		} catch (error) {
-			console.error("Uncaught", error);
-			this.dispatchEvent(new ErrorEvent("suberror", { error }));
+			this.dispatchEvent(new ErrorEvent("subloaderror", { error }));
 		}
+		if (this.#fetchMission != fetchMission) return;
 		++this.#subResourcesLoaded;
-		if (this.#fetching) this.dispatchEvent(new ProgressEvent("progress", { loaded: this.#percent, total: 100 }));
+		this.dispatchEvent(new ProgressEvent("progress", { loaded: this.#percent, total: 100 }));
 	}
 	async #onBodyLoad(event) {
 		if (!event.isTrusted) return;
 		event.stopImmediatePropagation();
 		this.dispatchEvent(new ProgressEvent("progress", { loaded: 50, total: 100 }));
-		if (!this.#fetching) return;
+		if (!this.#fetchMission) return;
 		const status = super.status;
 		this.#subResourcesLoaded = 0;
 		if ((status >= 200 && status < 300) || status == 304) {
@@ -164,14 +164,15 @@ class LoadRequest extends XMLHttpRequest {
 					this.#subResources = subResources;
 					let timeoutId;
 					if (remainTime < Infinity) timeoutId = setTimeout(this.#abortSubResources.bind(this), remainTime);
+					const fetchMission = this.#fetchMission;
 					await Promise.allSettled(subResources.map(subLoadsMapper));
 					if (timeoutId) clearTimeout(timeoutId);
 					this.#subResources = null;
-					if (!this.#fetching) return;
+					if (this.#fetchMission != fetchMission) return;
 				}
 			}
 		}
-		this.#fetching = false;
+		this.#fetchMission = null;
 		this.#done = true;
 		this.dispatchEvent(new Event("readystatechange"));
 		this.dispatchEvent(new ProgressEvent("load", { loaded: 100, total: 100 }));
@@ -193,7 +194,7 @@ class LoadRequest extends XMLHttpRequest {
 	}
 	open(method, url, user, password) {
 		LoadRequest.#checkInstance(this);
-		if (this.#fetching && super.readyState == XMLHttpRequest.DONE) this.#abortSubResources();
+		if (this.#fetchMission && super.readyState == XMLHttpRequest.DONE) this.#abortSubResources();
 		this.#response = this.#subResources = this.#startTime = null;
 		this.#done = false;
 		super.open(method, url, true, user, password);
@@ -202,13 +203,13 @@ class LoadRequest extends XMLHttpRequest {
 		LoadRequest.#checkInstance(this);
 		if (super.readyState != XMLHttpRequest.OPENED) throw new DOMException("Failed to execute 'send' on 'LoadRequest': The object's state must be OPENED.");
 		if (!this.#allowCache) super.setRequestHeader("If-Modified-Since", "0");
-		this.#fetching = true;
+		this.#fetchMission = Symbol("unique fetch mission");
 		this.#startTime = Date.now();
 		super.send(data);
 	}
 	abort() {
 		LoadRequest.#checkInstance(this);
-		if (!this.#fetching) return;
+		if (!this.#fetchMission) return;
 		if (super.readyState != XMLHttpRequest.DONE) {
 			super.abort();
 		} else {
