@@ -1,5 +1,5 @@
 import IndexedDatabase from "./IndexedDatabase.mjs";
-import promiseWithResolvers from "./PromiseWithResolvers.mjs";
+import "./PromiseWithResolvers.mjs";
 class DynamicIndexedDatabase {
 	static #checkInstance(instance) { if (!(instance instanceof this)) throw new TypeError("Illegal invocation") }
 	#db;
@@ -26,7 +26,7 @@ class DynamicIndexedDatabase {
 		DynamicIndexedDatabase.#checkInstance(this);
 		if (typeof name != "string") throw new TypeError("Failed to execute 'initialStore' on 'DynamicIndexedDatabase': Argument 'name' is not a string.");
 		if (typeof configure != "function") throw new TypeError("Failed to execute 'initialStore' on 'DynamicIndexedDatabase': Argument 'configure' is not a function.");
-		const adapter = promiseWithResolvers();
+		const adapter = Promise.withResolvers();
 		this.#queue.push({ adapter, name, configure });
 		this.#process();
 		return adapter.promise;

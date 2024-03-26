@@ -1,20 +1,19 @@
-console.warn("PromiseWithResolvers now has a native JavaScript implementation: Promise.withResolvers(), although this is a new specification that some browsers have not implemented." + ("withResolvers" in Promise ? " Your environment support it, how about have a try?" : ""));
-const resolve = { value: null, enumerable: true },
-	reject = { value: null, enumerable: true },
-	promise = { value: null, enumerable: true },
-	transfer = { promise, resolve, reject };
+var promise = null, resolve = null, reject = null;
 function expose(function1, function2) {
-	resolve.value = function1;
-	reject.value = function2
+	if (typeof function1 != "function" || typeof function2 != "function") throw new TypeError("Promise resolve or reject function is not callable");
+	resolve = function1;
+	reject = function2
 }
 /**
  * Polyfill of Promise.withResolvers()
- * @returns {{promise:Promise,resolve:(result:any)=>void,reject:(error:any)=>void}}
+ * @returns {{promise:PromiseLike,resolve:(result:any)=>void,reject:(error:any)=>void}}
  */
-export function promiseWithResolvers() {
-	promise.value = new Promise(expose);
-	const object = Object.defineProperties({}, transfer);
-	promise.value = resolve.value = reject.value = null;
+function withResolvers() {
+	if (typeof this != "function") throw new TypeError("Promise.withResolvers called on non-function");
+	promise = new this(expose);
+	const object = { promise, resolve, reject };
+	promise = resolve = reject = null;
 	return object;
-};
-export default promiseWithResolvers;
+}
+if ("withResolvers" in Promise) { console.warn("Your environment doesn't need this polyfill of Promise.withResolvers().") }
+else Promise.withResolvers = withResolvers;
