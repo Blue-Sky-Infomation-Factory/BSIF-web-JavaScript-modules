@@ -88,7 +88,17 @@ function parseNode(data, outer, collector) {
 			parseContent(node, content, collector);
 		}
 	}
-	if (collector && (3 in data)) collector[data[3]] = node;
+	if ("3" in data && collector) {
+		const name = data[3];
+		if (data[4]) {
+			const array = Object.hasOwn(collector, name) ? collector[name] : collector[name] = [];
+			if (!Array.isArray(array)) throw new Error(`Name '${name}' is specified as both array and single node.`);
+			array.push(node);
+		} else {
+			if (Object.hasOwn(collector, name)) throw new Error(`Name '${name}' got multi node but was not specified as an array.`);
+			collector[name] = node;
+		}
+	}
 }
 function parse(ArrayHTML) {
 	const documentFragment = document.createDocumentFragment();
