@@ -299,12 +299,8 @@ class MiniWindow extends EventTarget {
 	}
 }
 function clearContent() {
-	windowBody.style = "";
-	windowClose.style = "";
-	windowContent.innerHTML = "";
-	windowContent.style = "";
+	windowBody.style = windowClose.style = windowContent.style = windowTitle.innerHTML = windowContent.innerHTML = contentFrame.className = "";
 	for (const i in STYLE_NAMES) windowStyle.setProperty(`--mini-window-${STYLE_NAMES[i]}`, null);
-	contentFrame.className = "";
 }
 function setStyle(data) {
 	if (!(data instanceof Object)) return;
@@ -381,8 +377,9 @@ async function workflow() {
 		instance.dispatchEvent(new Event("closed"));
 		clearContent();
 		if (target == windowBody && !queue.length) {
+			windowStyle.display = "none";
 			await fadeOut(target = layer);
-			windowBody.className = "";
+			windowStyle.display = null;
 		}
 		if (!queue.length) break;
 	}
