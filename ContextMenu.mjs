@@ -1,6 +1,5 @@
-import { EVENT_LISTENERS, parse } from "./ArrayHTML.mjs";
-const root = document.documentElement,
-	font = "12px ui-sans-serif",
+import { EVENT_LISTENERS, parse, parseAndGetNodes } from "./ArrayHTML.mjs";
+const font = "12px ui-sans-serif",
 	drawContext = document.createElement("canvas").getContext("2d");
 drawContext.font = font;
 document.head.appendChild(parse([
@@ -22,21 +21,17 @@ document.head.appendChild(parse([
 		".context-menu-hr{border:0;background-color:#909090;height:1px;width:100%;margin:0}"
 	]]
 ]));
-function showMenu(list, anchor = null, darkStyle = false) {
-
-	const { documentFragment, maxItemWidth, itemsHeight } = buildList(list, darkStyle);
-	document.body.appendChild(documentFragment);
-	console.log(maxItemWidth, itemsHeight)
-
-}
-function buildList(list, darkStyle) {
+function buildList(list, darkStyle, level) {
 	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildList': Argument 'list' must be an array.");
 	const temp = [], length = list.length;
-	if (!length) return {
-		maxItemWidth: buildEmpty(temp) + 8,
-		documentFragment: parse([["div", temp, { class: "context-menu-list", tabindex: "1" }]]),
-		itemsHeight: 36
-	};
+	if (!length) {
+		return {
+			maxItemWidth: buildEmpty(temp) + 8,
+			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list", tabindex: "1" }, "element"]]).nodes.element,
+			itemsHeight: 36,
+			itemsList: []
+		};
+	}
 	var insertHr = false, previousHr = false, maxItemWidth = 0, itemsHeight = 0;
 	for (const item of list) {
 		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildList': Elements of list must be objects.");
@@ -80,10 +75,12 @@ function buildList(list, darkStyle) {
 		itemsHeight += 28
 		previousHr = true;
 	}
+	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: "context-menu-list" }, "element"]]).nodes;
 	return {
-		documentFragment: parse([["div", temp, { class: "context-menu-list", tabindex: "1" }]]),
+		element,
 		maxItemWidth: maxItemWidth + 8,
-		itemsHeight: itemsHeight + (length - 1) * 4 + 8
+		itemsHeight: itemsHeight + (length - 1) * 4 + 8,
+		itemsList
 	}
 }
 function buildKeys(data) {
@@ -137,7 +134,7 @@ function buildIcon(data) {
 			throw new Error("Failed to execute 'buildIcon': Invalid icon type.")
 	}
 }
-function buildItem(data, temp) {
+function buildItem(data, temp, level) {
 	const text = data.text;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildItem': Property 'text' of item is not a string.");
 	var keysWidth = 0, keyText = null;
@@ -152,10 +149,10 @@ function buildItem(data, temp) {
 		"icon" in data ? buildIcon(data.icon) : null,
 		["span", text, { class: "context-menu-item-text" }],
 		keyText ? ["span", keyText, { class: "context-menu-item-keys" }] : null
-	], properties]);
+	], properties, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
-function buildCheckItem(data, temp) {
+function buildCheckItem(data, temp, level) {
 	const text = data.text;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildCheckItem': Property 'text' of item is not a string.");
 	var keysWidth = 0, keyText = null;
@@ -171,19 +168,19 @@ function buildCheckItem(data, temp) {
 		["input", null, properties],
 		["span", text, { class: "context-menu-item-text" }],
 		keyText ? ["span", keyText, { class: "context-menu-item-keys" }] : null
-	], { class: "context-menu-item" }]);
+	], { class: "context-menu-item" }, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
-function buildSubList(data, temp) {
+function buildSubList(data, temp, level) {
 	const text = data.text;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildSubList': Property 'text' of item is not a string.");
 	temp.push(["button", [
 		"icon" in data ? buildIcon(data.icon) : null,
 		["span", text, { class: "context-menu-item-text" }]
-	], { class: "context-menu-item collection" }]);
+	], { class: "context-menu-item collection" }, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + 80;
 }
-function buildGroup(data, temp) {
+function buildGroup(data, temp, level) {
 	var maxItemWidth = 0;
 	for (const item of data) {
 		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildGroup': Elements of list must be objects.");
@@ -209,5 +206,59 @@ function buildEmpty(temp) {
 	temp.push(["div", [["span", "空"]], { class: "context-menu-empty" }]);
 	return drawContext.measureText("空").actualBoundingBoxRight;
 }
+const horizontalParam = ["left", "right"],
+	verticalParam = ["top", "bottom"];
+function meansureMenu(element, width, height, anchor, { horizontal, vertical }, isSubMenu = false) {
+	if (!anchor) return;
+	const { innerWidth: viewportWidth, innerHeight: viewportHeight } = window;
+	var pointX = 0, pointY = 0, horizontalDirection = true, verticalDirection = true;
+	if (anchor instanceof MouseEvent) {
+		pointX = anchor.clientX;
+		pointY = anchor.clientY;
+	} else if ("element" in anchor) {
+		const element = anchor.element;
+		if (!(element instanceof Element)) throw new TypeError("Invalid anchor.");
+		var { side, align } = element;
+		if (side !== undefined && side !== null && !horizontalParam.includes(side) && !verticalParam.includes(side)) throw new TypeError("Invalid anchor.");
+		if (align !== undefined && align !== null && !horizontalParam.includes(align) && !verticalParam.includes(align)) throw new TypeError("Invalid anchor.");
+		if (horizontalParam.includes(side) && horizontalParam.includes(align) || verticalParam.includes(side) && verticalParam.includes(align)) throw new TypeError("Invalid anchor.");
+		if (!side && !align) {
+			side = "bottom";
+			align = "left";
+		} else if (!side) {
+			side = horizontalParam.includes(align) ? "bottom" : "right";
+		} else if (!align) align = horizontalParam.includes(side) ? "top" : "left";
+
+
+	} else {
+		if ("x" in anchor) {
+			const x = anchor.x;
+			if (typeof x != "number" || !Number.isInteger(x)) throw new TypeError("Invalid anchor.");
+			pointX = x;
+		}
+		if ("y" in anchor) {
+			const y = anchor.y;
+			if (typeof y != "number" || !Number.isInteger(y)) throw new TypeError("Invalid anchor.");
+			pointX = y;
+		}
+	}
+}
+function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
+	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
+	if (arguments.length > 1 && !(anchor instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
+	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
+	deposeMenu();
+	const { element, maxItemWidth, itemsHeight, itemsList } = buildList(list, darkStyle, 0);
+	context = [{ parent: null, itemsList, element }];
+	meansureMenu(element, maxItemWidth, itemsHeight, anchor, enforcePositioning);
+	document.body.appendChild(element);
+	console.log({ element, maxItemWidth, itemsHeight, itemsList });
+}
+function deposeMenu() {
+	if (!context) return;
+	context[0].element.remove();
+	context = null;
+}
+var context = null;
 export { showMenu, drawContext };
 export default showMenu;
