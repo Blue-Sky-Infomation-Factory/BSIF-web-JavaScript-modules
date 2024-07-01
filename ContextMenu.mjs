@@ -1,10 +1,13 @@
 import { EVENT_LISTENERS, parse, parseAndGetNodes } from "./ArrayHTML.mjs";
 const font = "12px ui-sans-serif",
-	drawContext = document.createElement("canvas").getContext("2d");
+	drawContext = document.createElement("canvas").getContext("2d"),
+	isSubMenu = Symbol("isSubMenu"),
+	horizontalParam = ["left", "right"],
+	verticalParam = ["top", "bottom"];
 drawContext.font = font;
 document.head.appendChild(parse([
 	["style", [
-		`.context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;left:0;top:0;user-select:none}`,
+		`.context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none}`,
 		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
 		".context-menu-empty{opacity:0.5;place-content:center}",
 		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
@@ -206,42 +209,69 @@ function buildEmpty(temp) {
 	temp.push(["div", [["span", "空"]], { class: "context-menu-empty" }]);
 	return drawContext.measureText("空").actualBoundingBoxRight;
 }
-const horizontalParam = ["left", "right"],
-	verticalParam = ["top", "bottom"];
-function meansureMenu(element, width, height, anchor, { horizontal, vertical }, isSubMenu = false) {
-	if (!anchor) return;
-	const { innerWidth: viewportWidth, innerHeight: viewportHeight } = window;
-	var pointX = 0, pointY = 0, horizontalDirection = true, verticalDirection = true;
-	if (anchor instanceof MouseEvent) {
-		pointX = anchor.clientX;
-		pointY = anchor.clientY;
-	} else if ("element" in anchor) {
-		const element = anchor.element;
-		if (!(element instanceof Element)) throw new TypeError("Invalid anchor.");
-		var { side, align } = element;
-		if (side !== undefined && side !== null && !horizontalParam.includes(side) && !verticalParam.includes(side)) throw new TypeError("Invalid anchor.");
-		if (align !== undefined && align !== null && !horizontalParam.includes(align) && !verticalParam.includes(align)) throw new TypeError("Invalid anchor.");
-		if (horizontalParam.includes(side) && horizontalParam.includes(align) || verticalParam.includes(side) && verticalParam.includes(align)) throw new TypeError("Invalid anchor.");
-		if (!side && !align) {
-			side = "bottom";
-			align = "left";
-		} else if (!side) {
-			side = horizontalParam.includes(align) ? "bottom" : "right";
-		} else if (!align) align = horizontalParam.includes(side) ? "top" : "left";
-
-
+function pointPosition(element, width, height, x, y, horizontalDirection, verticalDirection, forceHorizontal, forceVertical) {
+	const { innerWidth, innerHeight } = window,
+		style = element.style;
+	if (forceHorizontal) {
+		if (horizontalDirection) {
+			style.left = x + "px";
+			const max = innerWidth - x;
+			style.width = (width > max ? max : width) + "px";
+		} else {
+			style.right = innerWidth - x + "px";
+			style.width = (width > x ? x : width) + "px";
+		}
 	} else {
+		const right = innerWidth - x;
+		if (width > (horizontalDirection ? right : x)) {
+			style[horizontalDirection ? "right" : "left"] = (horizontalDirection ? x : right) < width ? "0" : right + "px";
+		} else style[horizontalDirection ? "left" : "right"] = x + "px";
+	}
+	if (forceVertical) {
+		if (verticalDirection) {
+			style.top = y + "px";
+			const max = innerHeight - y;
+			style.height = (height > max ? max : height) + "px";
+		} else {
+			style.bottom = innerHeight - y + "px";
+			style.height = (height > y ? y : height) + "px";
+		}
+	} else {
+		const bottom = innerHeight - y;
+		if (height > (verticalDirection ? bottom : y)) {
+			style[verticalDirection ? "bottom" : "top"] = (verticalDirection ? y : bottom) < height ? "0" : bottom + "px";
+		} else style[verticalDirection ? "top" : "bottom"] = y + "px";
+	}
+}
+function elementPosition() {
+
+}
+function meansureMenu(element, width, height, anchor, { horizontal: forceHorizontal, vertical: forceVertical }) {
+	if (!anchor) return;
+	var horizontalDirection = true, verticalDirection = true;
+	if (anchor instanceof MouseEvent) {
+		pointPosition(element, width, height, anchor.clientX, anchor.clientY, true, true, forceHorizontal, forceVertical);
+	} else if ("element" in anchor) {
+		const { element, horizontal, vertical } = anchor;
+		if (
+			!(element instanceof Element)
+			|| horizontal != "left" && horizontal != "right" && horizontal !== null && horizontal !== undefined
+			|| vertical != "top" && vertical != "bottom" && vertical !== null && vertical !== undefined
+		) throw new TypeError("Invalid anchor.");
+		elementPosition(element, width, height, horizontal, vertical, horizontalDirection, verticalDirection, forceHorizontal, forceVertical);
+	} else {
+		let x = 0, y = 0;
 		if ("x" in anchor) {
-			const x = anchor.x;
+			x = anchor.x;
 			if (typeof x != "number" || !Number.isInteger(x)) throw new TypeError("Invalid anchor.");
-			pointX = x;
 		}
 		if ("y" in anchor) {
-			const y = anchor.y;
+			y = anchor.y;
 			if (typeof y != "number" || !Number.isInteger(y)) throw new TypeError("Invalid anchor.");
-			pointX = y;
 		}
+		pointPosition(element, width, height, x, y, true, true, forceHorizontal, forceVertical);
 	}
+
 }
 function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
