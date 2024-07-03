@@ -209,7 +209,10 @@ function buildEmpty(temp) {
 	return drawContext.measureText("空").actualBoundingBoxRight;
 }
 function pointPosition(style, width, height, x, y, horizontalDirection, verticalDirection, forceHorizontal, forceVertical) {
-	const { innerWidth, innerHeight } = window, right = innerWidth - x;
+	const { innerWidth, innerHeight } = window;
+	if (x < 0) { x = 0 } else if (x > innerWidth) x = innerWidth;
+	if (y < 0) { y = 0 } else if (y > innerHeight) y = innerHeight;
+	const right = innerWidth - x, bottom = innerHeight - y;
 	if (forceHorizontal) {
 		if (horizontalDirection) {
 			style.left = x + "px";
@@ -221,7 +224,6 @@ function pointPosition(style, width, height, x, y, horizontalDirection, vertical
 	} else if (width > (horizontalDirection ? right : x)) {
 		style[horizontalDirection ? "right" : "left"] = (horizontalDirection ? x : right) < width ? "0" : right + "px";
 	} else style[horizontalDirection ? "left" : "right"] = x + "px";
-	const bottom = innerHeight - y;
 	if (forceVertical) {
 		if (verticalDirection) {
 			style.top = y + "px";
@@ -237,10 +239,10 @@ function pointPosition(style, width, height, x, y, horizontalDirection, vertical
 function elementPosition(style, anchorElement, marginX, marginY, horizontalSide, width, height, side, align, forceHorizontal, forceVertical) {
 	const { innerWidth, innerHeight } = window;
 	var { top, bottom, left, right } = anchorElement.getBoundingClientRect();
-	top -= marginY;
-	bottom += marginY;
-	left -= marginX;
-	right += marginX;
+	if ((top -= marginY) < 0) { top = 0 } else if (top > innerHeight) top = innerHeight;
+	if ((bottom += marginY) < 0) { bottom = 0 } else if (bottom > innerHeight) bottom = innerHeight;
+	if ((left -= marginX) < 0) { left = 0 } else if (left > innerWidth) left = innerWidth;
+	if ((right += marginX) < 0) { right = 0 } else if (right > innerWidth) right = innerWidth;
 	const rightSpace1 = innerWidth - left, rightSpace2 = innerWidth - right,
 		bottomSpace1 = innerHeight - top, bottomSpace2 = innerHeight - bottom;
 	var horizontalDirection, verticalDirection;
