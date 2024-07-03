@@ -46,8 +46,10 @@ type SubList = {
 	list: ListItemsTypes[]
 } & IconItem;
 type ElementAnchor = {
-	element: Element
-} & (ElementHorizontalAnchor | ElementVerticalAnchor);
+	element: Element,
+	marginX?: number,
+	marginY?: number
+} & Partial<ElementHorizontalAnchor | ElementVerticalAnchor>;
 type ElementHorizontalAnchor = {
 	side: "left" | "right",
 	align: "top" | "bottom"
