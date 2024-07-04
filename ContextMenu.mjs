@@ -1,4 +1,4 @@
-import { EVENT_LISTENERS, parse, parseAndGetNodes } from "./ArrayHTML.mjs";
+import { EVENT_LISTENERS, OBJECT_PROPERTIES, parse, parseAndGetNodes } from "./ArrayHTML.mjs";
 const font = "12px ui-sans-serif",
 	drawContext = document.createElement("canvas").getContext("2d"),
 	horizontalParam = ["left", "right"],
@@ -8,11 +8,13 @@ document.head.appendChild(parse([
 	["style", [
 		`.context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none}`,
 		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
+		".context-menu-item>*{pointer-events:none}",
 		".context-menu-empty{opacity:0.5;place-content:center}",
 		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
 		".context-menu-item,.context-menu-empty{height:28px;display:grid}",
 		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:#000;grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
-		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-item:active,.context-menu-item.active{background-color:#D3DFE9}",
+		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-item:hover{background-color:#D3DFE9}",
+		".context-menu-item:active{background-color:#BCD}",
 		".context-menu-item:disabled{opacity:0.5;pointer-events:none}",
 		".context-menu-item-icon{grid-area:icon;width:16px;height:16px;place-self:center;overflow:hidden}",
 		".context-menu-item-icon.image{background-size:cover;background-position:center}",
@@ -159,18 +161,17 @@ function buildCheckItem(data, temp, level) {
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildCheckItem': Property 'text' of item is not a string.");
 	var keysWidth = 0, keyText = null;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys)).actualBoundingBoxRight;
-	const properties = { class: "context-menu-item-checkbox", type: "checkbox" };
-	if (data.state) properties.checked = "";
+	const properties = { class: "context-menu-item" }, checked = Boolean(data.checked), id = data.id;
 	if ("onselect" in data) {
 		const onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onselect' of item is not a function.");
-		properties[EVENT_LISTENERS] = [["change", function () { onselect(this.checked) }, { once: true, passive: true }]];
+		properties[EVENT_LISTENERS] = [["click", function () { onselect(!checked, id) }, { once: true, passive: true }]];
 	}
-	temp.push(["label", [
-		["input", null, properties],
+	temp.push(["button", [
+		["input", null, { class: "context-menu-item-checkbox", type: "checkbox", [OBJECT_PROPERTIES]: { checked } }],
 		["span", text, { class: "context-menu-item-text" }],
 		keyText ? ["span", keyText, { class: "context-menu-item-keys" }] : null
-	], { class: "context-menu-item" }, "list", true]);
+	], properties, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
 function buildSubList(data, temp, level) {
@@ -333,22 +334,39 @@ function measureMenu(style, width, height, anchor, { horizontal: forceHorizontal
 		pointPosition(style, width, height, x, y, true, true, forceHorizontal, forceVertical);
 	}
 }
+var context = null;
 function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
 	if (arguments.length > 1 && !(anchor instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
 	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
 	deposeMenu();
 	const { element, maxItemWidth, itemsHeight, itemsList } = buildList(list, darkStyle, 0);
-	context = [{ parent: null, itemsList, element }];
+	context = {
+		levels: [{ itemsList, element }],
+		currentLevel: 0
+	};
 	measureMenu(element.style, maxItemWidth, itemsHeight, anchor, enforcePositioning);
+	element.addEventListener("click", clickEvent);
+	element.addEventListener("change", clickEvent);
+	element.addEventListener("contextmenu", preventEvent);
 	document.body.appendChild(element);
-	console.log({ element, maxItemWidth, itemsHeight, itemsList });
+	work(element);
+}
+function preventEvent(event) {
+	event.preventDefault();
+	event.stopImmediatePropagation();
+}
+function clickEvent(event) {
+	console.log(event.type, event.target);
+	if (event.target.className == "context-menu-item") deposeMenu();
+}
+function work(root) {
+
 }
 function deposeMenu() {
 	if (!context) return;
-	context[0].element.remove();
+	context.levels[0].element.remove();
 	context = null;
 }
-var context = null;
 export { showMenu, drawContext };
 export default showMenu;

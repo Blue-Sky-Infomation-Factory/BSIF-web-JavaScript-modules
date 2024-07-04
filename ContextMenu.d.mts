@@ -32,8 +32,9 @@ type MenuItem = {
 } & IconItem;
 type CheckItem = {
 	type: "check-item",
-	state: boolean,
-	onselect?: (toState: boolean) => any;
+	checked: boolean,
+	id: any,
+	onselect?: (toState: boolean, id: any) => any
 } & CommonItem;
 type ContainerItemTypes = MenuItem | CheckItem | SubList;
 type Group = {
