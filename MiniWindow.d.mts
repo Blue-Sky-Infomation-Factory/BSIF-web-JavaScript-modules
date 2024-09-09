@@ -4,7 +4,8 @@ type MiniWindowOptions = {
 		width?: string,
 		height?: string
 	},
-	style?: MiniWindowStyleOptions
+	style?: MiniWindowStyleOptions,
+	containerClassName?: string
 }
 type MiniWindowStyleOptions = {
 	backgroundColor?: string,
@@ -88,7 +89,7 @@ declare class MiniWindow extends EventTarget {
 	 * @param message - The message to display in the confirmation dialog.
 	 * @returns A promise that resolves to true when the confirmation is accepted, and false when declined.
 	 */
-	confirm(message: string): Promise<boolean>;
+	confirm(message: string, textOfYes = "是", textOfNo = "否"): Promise<boolean>;
 	/**
 	 * Shows a sub window with a loading spinner let the user wating for something.
 	 * @param message The tooltip text to display.
@@ -102,6 +103,7 @@ declare class MiniWindow extends EventTarget {
 	 * @throws {DOMException} User clicked the cancel button.
 	 */
 	prompt(message: string, defaultText?: string): Promise<string>;
+	static alert(message: string | Node, title = "提示"): Promise<void>;
 	/**
 	 * Shows a confirmation dialog with custom content and title.
 	 * @static
@@ -109,11 +111,12 @@ declare class MiniWindow extends EventTarget {
 	 * @param title The title of the confirmation dialog.
 	 * @returns A promise that resolves to true when the confirmation is accepted, and false when declined.
 	 */
-	static confirm(content: string | Node, title = "确认"): Promise<boolean>;
-	static wait(message: string): () => void;
+	static confirm(content: string | Node, title = "确认", textOfYes = "是", textOfNo = "否"): Promise<boolean>;
+	static wait(message: string, title = "请等待"): () => void;
 	static prompt(message: string, defaultText?: string): Promise<string>;
 }
 declare function remove(): void;
 declare function reload(): void;
+declare function setCounterEnabled(enabled: boolean): void;
 export default MiniWindow;
 export { MiniWindow, remove, reload }

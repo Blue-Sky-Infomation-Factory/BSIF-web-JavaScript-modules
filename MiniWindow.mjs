@@ -3,7 +3,7 @@ import "./PromiseWithResolvers.mjs";
 const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent, contentFrame, subLayer, subTitle, subFrame, subBody } = parseAndGetNodes([
 	["div", [
 		["style", [
-			"#mini-window-layer,#mini-window-sub-layer{top:0;bottom:0;left:0;right:0;z-index:1073741823;display:none}",
+			"#mini-window-layer,#mini-window-sub-layer{top:0;bottom:0;left:0;right:0;z-index:1073741824;display:none}",
 			"#mini-window-layer{position:fixed;background-color:rgba(0,0,0,0.7)}",
 			"#mini-window-sub-layer{position:absolute}",
 			"#mini-window,#mini-window-sub{box-sizing:border-box;place-self:center;min-width:16rem;min-height:8rem;max-width:80%;max-height:80%;overflow:hidden;border-radius:0.75rem;padding:0.75rem;display:grid;grid-template-rows:1.25rem auto 1fr;background-color:var(--mini-window-background-color);color:var(--mini-window-text-color);font-size:0.9375rem;user-select:text}",
@@ -17,11 +17,10 @@ const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent,
 			"#mini-window-sub{box-shadow:#000000 0 0 0.5rem}",
 			"#mini-window-sub.in{animation:mini-window-sub-window-in 0.2s forwards}",
 			"#mini-window-sub.out{animation:mini-window-fade-out 0.2s forwards}",
-			"#mini-window-top{overflow:hidden;display:grid;grid-template-columns:1fr 2em 1.25rem;gap:0.25rem}",
-			"#mini-window-top>*{height:100%;width:100%}",
+			"#mini-window-top{overflow:hidden;display:grid;grid-template-columns:1fr;grid-auto-columns:auto;grid-auto-flow:column;gap:0.25rem}",
 			"#mini-window-title,#mini-window-sub-title{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}",
-			"#mini-window-queue{box-sizing:border-box;border:solid 0.125rem var(--mini-window-interactive-text-color);border-radius:0.25rem;overflow:hidden;display:grid;place-content:center;font-size:0.75rem}",
-			"#mini-window-close{position:relative;border-radius:0.25rem}",
+			"#mini-window-queue{box-sizing:border-box;border:solid 0.125rem var(--mini-window-interactive-text-color);border-radius:0.25rem;overflow:hidden;place-content:center;font-size:0.75rem;width:2.5em;display:none}",
+			"#mini-window-close{position:relative;width:1.25rem;height:1.25rem}",
 			"#mini-window-close::before,#mini-window-close::after{content:'';position:absolute;top:0;bottom:0;left:0;right:0;margin:auto;border-radius:0.0625rem;width:0.125rem;height:1rem;background-color:var(--mini-window-interactive-text-color);transform:rotate(45deg)}",
 			"#mini-window-close::before{transform:rotate(-45deg)}",
 			"#mini-window-close:hover::before,#mini-window-close:hover::after{background-color:var(--mini-window-interactive-hover-text-color)}",
@@ -29,24 +28,22 @@ const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent,
 			"#mini-window-content-frame{position:relative;width:100%;height:100%;overflow:hidden}",
 			"#mini-window-layer.in>#mini-window::after,#mini-window-layer.out>#mini-window::after,#mini-window.in::after,#mini-window.out::after,#mini-window-sub.in::after,#mini-window-sub.out::after,#mini-window-content-frame.blocked::after{content:'';position:absolute;z-index:2147483647;left:0;right:0;top:0;bottom:0;display:block;opacity:0}",
 			"#mini-window-content{position:relative;max-width:100%;max-height:100%;width:100%;height:100%;box-sizing:border-box;overflow:auto;word-wrap:break-word;word-break:normal;color:var(--mini-window-text-color);user-select:text}",
-			"#mini-window-content img{max-width:100%;height:auto}",
 			// build-in elements
 			"#mini-window .mini-window-button{border:none;border-radius:0.25rem;padding:0.5em}",
 			"#mini-window .mini-window-button,#mini-window-queue{background-color:var(--mini-window-interactive-color);color:var(--mini-window-interactive-text-color);user-select:none}",
 			"#mini-window .mini-window-button:hover{background-color:var(--mini-window-interactive-hover-color);color:var(--mini-window-interactive-hover-text-color)}",
 			"#mini-window .mini-window-button:active:focus{background-color:var(--mini-window-interactive-active-color);color:var(--mini-window-interactive-active-text-color)}",
-			"#mini-window .mini-window-hr{box-sizing:border-box;width:100%;border:solid 0.0625rem var(--mini-window-text-color);border-radius:0.0625rem;background-color:var(--mini-window-text-color)}",
+			"#mini-window .mini-window-hr{box-sizing:border-box;width:100%;border:0;height:0.0625rem;border-radius:0.03125rem;background-color:var(--mini-window-text-color)}",
 			"#mini-window .mini-window-input{box-sizing:border-box;height:2rem;border: 0.0625rem solid var(--mini-window-interactive-color);border-radius:0.25rem;color:var(--mini-window-text-color);font-size:inherit;padding-inline:0.375rem;background-color:var(--mini-window-background-color)}",
 			"#mini-window .mini-window-input:focus{outline:var(--mini-window-interactive-active-color) 0.125rem auto}",
 			// build-in components
-			"#mini-window-sub-content-frame{display:grid;gap:0.5rem;grid-template-rows:1fr}",
-			"#mini-window-sub-content-frame.wait{grid-template-columns:2rem 1fr;place-items:center start}",
+			"#mini-window-sub-content-frame,#mini-window-content.mini-window-dialog-frame{display:grid;gap:0.5rem;grid-template-rows:1fr}",
+			"#mini-window-sub-content-frame.wait,#mini-window-content.mini-window-dialog-frame.wait{grid-template-columns:2rem 1fr;place-items:center start}",
 			".mini-window-message{overflow:hidden auto;word-break:break-word}",
 			".mini-window-buttons{display:grid;grid-auto-columns:minmax(auto,6rem);grid-auto-flow:column;gap:0.5rem;justify-self:end}",
 			".mini-window-buttons>.mini-window-button{font-weight:bold}",
-			".mini-window-cycle,.mini-window-cycle::before{width:2rem;height:2rem}",
 			"@keyframes mini-window-cycle{from{transform:rotate(0)}to{transform:rotate(1turn)}}",
-			".mini-window-cycle::before{display:block;content:\"\";box-sizing:border-box;background-color:transparent;border:solid 0.125rem;border-color:#0080FF #0080FF transparent transparent;border-radius:50%;transform-origin:center;animation:mini-window-cycle 1s linear infinite forwards running}"
+			".mini-window-cycle{width:2rem;height:2rem;box-sizing:border-box;background-color:transparent;border:solid 0.125rem;border-color:#0080FF #0080FF transparent transparent;border-radius:50%;transform-origin:center;animation:mini-window-cycle 1s linear infinite forwards running}"
 		]],
 		["div", [
 			["div", [
@@ -208,7 +205,7 @@ class MiniWindow extends EventTarget {
 		this.#createSub(controller);
 		return promise;
 	}
-	confirm(message) {
+	confirm(message, textOfYes = null, textOfNo = null) {
 		MiniWindow.#checkInstance(this);
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'confirm' on 'MiniWindow': Argument 'message' is not a string.");
@@ -216,8 +213,8 @@ class MiniWindow extends EventTarget {
 		const controller = new SubWindowController("confirm", "确认", parse([
 			["div", message, { class: "mini-window-message" }],
 			["div", [
-				["button", "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true) }, { once: true, passive: true }]] }],
-				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false) }, { once: true, passive: true }]] }]
+				["button", typeof textOfYes == "string" ? textOfYes : "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true) }, { once: true, passive: true }]] }],
+				["button", typeof textOfNo == "string" ? textOfNo : "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false) }, { once: true, passive: true }]] }]
 			], { class: "mini-window-buttons" }]
 		])), { resolve, promise } = controller.promise;
 		this.#createSub(controller);
@@ -259,47 +256,52 @@ class MiniWindow extends EventTarget {
 			configurable: true
 		});
 	}
-	static confirm(content, title = "确认") {
-		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm': 1 argument required, but only 0 present.");
-		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'confirm': Argument 'content' is not a string or HTML node.");
-		if (typeof title != "string") title = "确认";
+	static alert(content, title = null) {
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'alert': 1 argument required, but only 0 present.");
+		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'alert': Argument 'content' is not a string or HTML node.");
 		const { promise, resolve } = Promise.withResolvers(), miniWindow = new MiniWindow(parse([
-			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-rows:1fr}"],
 			["div", content, { class: "mini-window-message" }],
-			["div", [
-				["button", "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true); miniWindow.close() }, { once: true, passive: true }]] }],
-				["button", "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false); miniWindow.close() }, { once: true, passive: true }]] }]
-			], { class: "mini-window-buttons" }]
-		], true), title, { noManualClose: true, size: { width: "384px" } });
+			["div", [["button", "确认", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(); miniWindow.close() }, { once: true, passive: true }]] }]], { class: "mini-window-buttons" }]
+		], true), typeof title == "string" ? title : "提示", { noManualClose: true, size: { width: "384px" }, containerClassName: "mini-window-dialog-frame" });
 		return promise;
 	}
-	static wait(message) {
+	static confirm(content, title = null, textOfYes = null, textOfNo = null) {
+		if (arguments.length < 1) throw new TypeError("Failed to execute 'confirm': 1 argument required, but only 0 present.");
+		if (typeof content != "string" && !(content instanceof Node)) throw new TypeError("Failed to execute 'confirm': Argument 'content' is not a string or HTML node.");
+		const { promise, resolve } = Promise.withResolvers(), miniWindow = new MiniWindow(parse([
+			["div", content, { class: "mini-window-message" }],
+			["div", [
+				["button", typeof textOfYes == "string" ? textOfYes : "是", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(true); miniWindow.close() }, { once: true, passive: true }]] }],
+				["button", typeof textOfNo == "string" ? textOfNo : "否", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { resolve(false); miniWindow.close() }, { once: true, passive: true }]] }]
+			], { class: "mini-window-buttons" }]
+		], true), typeof title == "string" ? title : "确认", { noManualClose: true, size: { width: "384px" }, containerClassName: "mini-window-dialog-frame" });
+		return promise;
+	}
+	static wait(message, title = null) {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'wait' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'wait' on 'MiniWindow': Argument 'message' is not a string.");
 		return closeInstance.bind(null, new MiniWindow(parse([
-			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-columns:2rem 1fr;place-items:center start}"],
 			["div", null, { class: "mini-window-cycle" }],
 			["div", message, { class: "mini-window-message" }]
-		]), "请等待", { noManualClose: true }).#controller);
+		]), typeof title == "string" ? title : "请等待", { noManualClose: true, containerClassName: "mini-window-dialog-frame wait" }).#controller);
 	}
 	static prompt(message, defaultText = "") {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': 1 argument required, but only 0 present.");
 		if (typeof message != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'message' is not a string.");
 		if (typeof defaultText != "string") throw new TypeError("Failed to execute 'prompt' on 'MiniWindow': Argument 'defaultText' is not a string.");
 		const { documentFragment, nodes: { input } } = parseAndGetNodes([
-			["style", "#mini-window-content{display:grid;gap:0.5rem;grid-template-rows:1fr}"],
 			["div", message, { class: "mini-window-message" }],
 			["input", null, { class: 'mini-window-input', value: defaultText }, 'input'],
 			["div", [
 				["button", "确定", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); resolve(input.value) }, { once: true, passive: true }]] }],
-				["button", "取消", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); reject(new DOMException("User canceled.", "UserCanceled")) }, { once: true, passive: true }]] }]
+				["button", "取消", { class: "mini-window-button", [EVENT_LISTENERS]: [["click", () => { miniWindow.close(); reject(new DOMException("User canceled.", "AbortError")) }, { once: true, passive: true }]] }]
 			], { class: "mini-window-buttons" }]
-		]), { resolve, reject, promise } = Promise.withResolvers(), miniWindow = new MiniWindow(documentFragment, "输入", { noManualClose: true, size: { width: "384px" } });
+		]), { resolve, reject, promise } = Promise.withResolvers(), miniWindow = new MiniWindow(documentFragment, "输入", { noManualClose: true, size: { width: "384px" }, containerClassName: "mini-window-dialog-frame" });
 		return promise;
 	}
 }
 function clearContent() {
-	windowBody.style = windowClose.style = windowContent.style = windowTitle.innerHTML = windowContent.innerHTML = contentFrame.className = "";
+	windowBody.style = windowClose.style = windowContent.style = windowTitle.innerHTML = windowContent.innerHTML = contentFrame.className = windowContent.className = "";
 	for (const i in STYLE_NAMES) windowStyle.setProperty(`--mini-window-${STYLE_NAMES[i]}`, null);
 }
 function setStyle(data) {
@@ -335,6 +337,7 @@ function setContent(data) {
 	if (options.noManualClose) windowClose.style.display = "none";
 	if ("size" in options) setSize(options.size);
 	if ("style" in options) setStyle(options.style);
+	if ("containerClassName" in options) windowContent.className = options.containerClassName;
 }
 function fadeIn(target) {
 	return new Promise(function (resolve) {
@@ -451,7 +454,8 @@ async function subWindowWorkflow(queue) {
 }
 function remove() { layer.remove() }
 function reload() { document.body.appendChild(layer) }
+function setCounterEnabled(enabled) { windowQueue.style.display = enabled ? "grid" : null }
 windowClose.addEventListener("click", close, { passive: true });
 contentFrame.addEventListener("animationend", preventBubble, { passive: true });
 export default MiniWindow;
-export { MiniWindow, remove, reload }
+export { MiniWindow, remove, reload, setCounterEnabled }
