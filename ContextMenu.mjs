@@ -346,25 +346,39 @@ function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = fal
 		currentLevel: 0
 	};
 	measureMenu(element.style, maxItemWidth, itemsHeight, anchor, enforcePositioning);
-	element.addEventListener("click", clickEvent);
-	element.addEventListener("change", clickEvent);
+	element.addEventListener("click", itemClickEvent);
+	element.addEventListener("change", itemClickEvent);
 	element.addEventListener("contextmenu", preventEvent);
 	document.body.appendChild(element);
+	addGlobalListener();
 	work(element);
 }
 function preventEvent(event) {
 	event.preventDefault();
 	event.stopImmediatePropagation();
 }
-function clickEvent(event) {
+function itemClickEvent(event) {
 	console.log(event.type, event.target);
 	if (event.target.className == "context-menu-item") deposeMenu();
+	event.stopPropagation();
+}
+function globalClickEvent(event) {
+	if (!context.levels[0].element.contains(event.target)) deposeMenu();
 }
 function work(root) {
 
 }
+function addGlobalListener() {
+	window.addEventListener("blur", deposeMenu);
+	document.addEventListener("click", globalClickEvent, { capture: true });
+}
+function removeGlobalListener() {
+	window.removeEventListener("blur", deposeMenu);
+	document.removeEventListener("click", globalClickEvent, { capture: true });
+}
 function deposeMenu() {
 	if (!context) return;
+	removeGlobalListener();
 	context.levels[0].element.remove();
 	context = null;
 }
