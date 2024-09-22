@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+
+<head>
+	<meta charset="utf-8">
+	<title>HTML Creator</title>
+	<!-- 外部样式 -->
+	<link rel="stylesheet" href="/css/BSIF_style.css">
+	<link rel="stylesheet" href="/css/main.css">
+	<script type="module">
+		import showMenu from "./ContextMenu.mjs";
+		const {promise,resolve} = Promise.withResolvers();
+		window.addEventListener("click", resolve, {once:true});
+		//const event = await promise;
+		showMenu([
+			{
+				type: "group",
+				list: [{
+					type: "item",
+					text: "顶部组"
+				}]
+			},
+			{
+				type: "group",
+				list: [
+					{
+						type: "item",
+						text: "连续组"
+					},
+					{
+						type: "item",
+						text: "多选项组"
+					},
+					{
+						type: "item",
+						text: "↓ 空组"
+					}
+				]
+			},
+			{
+				type: "group",
+				list: []
+			},
+			{
+				type: "item",
+				text: "选项",
+				keys: {
+					ctrl: true,
+					alt: true,
+					shift: true,
+					key: "A"
+				},
+				onselect(){
+					console.log("test")
+				}
+			},
+			{
+				type: "item",
+				text: "快捷键挤压-------------------------------",
+				keys: {
+					ctrl: true,
+					alt: true,
+					shift: true,
+					key: "A"
+				}
+			},
+			{
+				type: "item",
+				text: "超长项-------------------------------------------------------"
+			},
+			{
+				type: "check-item",
+				text: "勾选",
+				keys: {
+					ctrl: true,
+					key: "B"
+				},
+				checked: true,
+				onselect(e){
+					console.log(e)
+				}
+			},
+			{
+				type: "sub-list",
+				text: "折叠",
+				list: []
+			},
+			{
+				type: "group",
+				list: [{
+					type: "item",
+					text: "底部组"
+				}]
+			}
+		], {
+			element: document.getElementById("test-anchor"),
+			side: "left",
+			align: "top",
+			marginX: 4
+		});
+	</script>
+</head>
+
+<body>
+</body>
+<div id="test-anchor" style="width:32px;height:32px;background-color:red;position:absolute;top:384px;left:512px;"></div>
+</html>

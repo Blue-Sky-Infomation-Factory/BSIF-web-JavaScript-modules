@@ -25,15 +25,17 @@ document.head.appendChild(parse([
 		".context-menu-hr{border:0;background-color:#909090;height:1px;width:100%;margin:0}"
 	]]
 ]));
-function buildList(list, darkStyle, level) {
+function buildList(list, darkStyle) {
 	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildList': Argument 'list' must be an array.");
-	const temp = [], length = list.length;
+	const temp = [], length = list.length, subLists = [], callbacks = [];
 	if (!length) {
 		return {
 			maxItemWidth: buildEmpty(temp) + 8,
-			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list", tabindex: "1" }, "element"]]).nodes.element,
+			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes.element,
 			itemsHeight: 36,
-			itemsList: []
+			itemsList: [],
+			callbacks,
+			subLists
 		};
 	}
 	var insertHr = false, previousHr = false, maxItemWidth = 0, itemsHeight = 0;
@@ -47,10 +49,10 @@ function buildList(list, darkStyle, level) {
 		}
 		switch (item.type) {
 			case "item":
-				itemWidth = buildItem(item, temp);
+				itemWidth = buildItem(item, temp, callbacks);
 				break;
 			case "check-item":
-				itemWidth = buildCheckItem(item, temp);
+				itemWidth = buildCheckItem(item, temp, callbacks);
 				break;
 			case "group": {
 				const list = item.list;
@@ -61,7 +63,7 @@ function buildList(list, darkStyle, level) {
 				}
 				const length = list.length;
 				if (length) {
-					itemWidth = buildGroup(list, temp);
+					itemWidth = buildGroup(list, temp, callbacks, subLists);
 					itemsHeight += (length - 1) * 32;
 				} else {
 					itemWidth = buildEmpty(temp);
@@ -70,7 +72,7 @@ function buildList(list, darkStyle, level) {
 				break;
 			}
 			case "sub-list":
-				itemWidth = buildSubList(item, temp);
+				itemWidth = buildSubList(item, temp, subLists);
 				break;
 			default:
 				throw new TypeError(`Failed to execute 'buildList': Invalid item type '${item.type}'.`)
@@ -84,17 +86,19 @@ function buildList(list, darkStyle, level) {
 		element,
 		maxItemWidth: maxItemWidth + 8,
 		itemsHeight: itemsHeight + (length - 1) * 4 + 8,
-		itemsList
+		itemsList,
+		callbacks,
+		subLists
 	}
 }
-function buildKeys(data) {
+function buildKeys(data, callbackData) {
 	if (!(data instanceof Object)) throw new TypeError("Failed to execute 'buildKeys': Property 'keys' of item is not an object.");
 	const key = data.key;
 	if (typeof key != "string" || !key) throw new Error("Failed to execute 'buildKeys': Property 'keys' of object must be a non-empty string.")
 	const keys = [];
-	if (data.ctrl) keys.push("Ctrl");
-	if (data.alt) keys.push("Alt");
-	if (data.shift) keys.push("Shift");
+	if (callbackData.ctrl = Boolean(data.ctrl)) keys.push("Ctrl");
+	if (callbackData.alt = Boolean(data.alt)) keys.push("Alt");
+	if (callbackData.shift = Boolean(data.shift)) keys.push("Shift");
 	keys.push(key);
 	return keys.join(" + ");
 }
@@ -138,16 +142,20 @@ function buildIcon(data) {
 			throw new Error("Failed to execute 'buildIcon': Invalid icon type.")
 	}
 }
-function buildItem(data, temp, level) {
+function buildItem(data, temp, callbacks) {
 	const text = data.text;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildItem': Property 'text' of item is not a string.");
-	var keysWidth = 0, keyText = null;
-	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys)).actualBoundingBoxRight;
+	var keysWidth = 0, keyText = null, callback;
+	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item" };
 	if ("onselect" in data) {
 		const onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onselect' of item is not a function.");
-		properties[EVENT_LISTENERS] = [["click", onselect, { once: true, passive: true }]];
+		if (callback) { callback.callback = onselect } else callback = { shortcut: false, callback: onselect };
+	}
+	if (callback) {
+		properties["data-callback"] = callbacks.length;
+		callbacks.push(callback);
 	}
 	temp.push(["button", [
 		"icon" in data ? buildIcon(data.icon) : null,
@@ -156,16 +164,21 @@ function buildItem(data, temp, level) {
 	], properties, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
-function buildCheckItem(data, temp, level) {
+function buildCheckItem(data, temp, callbacks) {
 	const text = data.text;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildCheckItem': Property 'text' of item is not a string.");
-	var keysWidth = 0, keyText = null;
-	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys)).actualBoundingBoxRight;
+	var keysWidth = 0, keyText = null, callback;
+	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item" }, checked = Boolean(data.checked), id = data.id;
 	if ("onselect" in data) {
-		const onselect = data.onselect;
+		let onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onselect' of item is not a function.");
-		properties[EVENT_LISTENERS] = [["click", function () { onselect(!checked, id) }, { once: true, passive: true }]];
+		onselect = onselect.bind(null, !checked, id);
+		if (callback) { callback.callback = onselect } else callback = { shortcut: false, callback: onselect };
+	}
+	if (callback) {
+		properties["data-callback"] = callbacks.length;
+		callbacks.push(callback);
 	}
 	temp.push(["button", [
 		["input", null, { class: "context-menu-item-checkbox", type: "checkbox", [OBJECT_PROPERTIES]: { checked } }],
@@ -174,29 +187,31 @@ function buildCheckItem(data, temp, level) {
 	], properties, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
-function buildSubList(data, temp, level) {
-	const text = data.text;
+function buildSubList(data, temp, subLists) {
+	const { text, list } = data;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildSubList': Property 'text' of item is not a string.");
+	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildSubList': Property 'list' of item is not an array.");
+	subLists.push(list);
 	temp.push(["button", [
 		"icon" in data ? buildIcon(data.icon) : null,
 		["span", text, { class: "context-menu-item-text" }]
 	], { class: "context-menu-item collection" }, "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + 80;
 }
-function buildGroup(data, temp, level) {
+function buildGroup(data, temp, callbacks, subLists) {
 	var maxItemWidth = 0;
 	for (const item of data) {
 		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildGroup': Elements of list must be objects.");
 		let width;
 		switch (item.type) {
 			case "item":
-				width = buildItem(item, temp);
+				width = buildItem(item, temp, callbacks);
 				break;
 			case "check-item":
-				width = buildCheckItem(item, temp);
+				width = buildCheckItem(item, temp, callbacks);
 				break;
 			case "sub-list":
-				width = buildSubList(item, temp);
+				width = buildSubList(item, temp, subLists);
 				break;
 			default:
 				throw new TypeError(`Failed to execute 'buildGroup': Invalid item type '${item.type}'.`)
@@ -340,18 +355,17 @@ function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = fal
 	if (arguments.length > 1 && !(anchor instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
 	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
 	deposeMenu();
-	const { element, maxItemWidth, itemsHeight, itemsList } = buildList(list, darkStyle, 0);
-	context = {
-		levels: [{ itemsList, element }],
-		currentLevel: 0
-	};
-	measureMenu(element.style, maxItemWidth, itemsHeight, anchor, enforcePositioning);
+	const topLevel = buildList(list, darkStyle), element = topLevel.element, route = new WeakMap;
+	context = { levels: [topLevel], route, currentLevel: 0 };
+	route.set(element, topLevel);
+	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning);
+	delete topLevel.maxItemWidth;
+	delete topLevel.itemsHeight;
 	element.addEventListener("click", itemClickEvent);
-	element.addEventListener("change", itemClickEvent);
 	element.addEventListener("contextmenu", preventEvent);
 	document.body.appendChild(element);
 	addGlobalListener();
-	work(element);
+	console.log(context)
 }
 function preventEvent(event) {
 	event.preventDefault();
@@ -365,16 +379,24 @@ function itemClickEvent(event) {
 function globalClickEvent(event) {
 	if (!context.levels[0].element.contains(event.target)) deposeMenu();
 }
-function work(root) {
-
+/**
+ * 
+ * @param {KeyboardEvent} event 
+ */
+function keyBoardEvent(event) {
+	console.log(event.type, event.key);
+	const { key, ctrlKey: ctrl, altKey: alt, shiftKey: shift } = event;
+	if (key == "Tab") event.preventDefault();
 }
 function addGlobalListener() {
 	window.addEventListener("blur", deposeMenu);
 	document.addEventListener("click", globalClickEvent, { capture: true });
+	document.addEventListener("keydown", keyBoardEvent, { capture: true });
 }
 function removeGlobalListener() {
 	window.removeEventListener("blur", deposeMenu);
 	document.removeEventListener("click", globalClickEvent, { capture: true });
+	document.removeEventListener("keydown", keyBoardEvent, { capture: true });
 }
 function deposeMenu() {
 	if (!context) return;
