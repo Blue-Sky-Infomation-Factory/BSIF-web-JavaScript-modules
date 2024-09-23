@@ -13,7 +13,7 @@ document.head.appendChild(parse([
 		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
 		".context-menu-item,.context-menu-empty{height:28px;display:grid}",
 		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:#000;grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
-		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-list:not(:focus-within)>.context-menu-item:hover{background-color:#D3DFE9}",
+		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-list:not(:focus-within)>.context-menu-item:hover,.context-menu-item.collection.active{background-color:#D3DFE9}",
 		".context-menu-item:active{background-color:#BCD}",
 		".context-menu-item:disabled{opacity:0.5;pointer-events:none}",
 		".context-menu-item-icon{grid-area:icon;width:16px;height:16px;place-self:center;overflow:hidden}",
@@ -193,11 +193,11 @@ function buildSubList(data, temp, subLists) {
 	const { text, list } = data;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildSubList': Property 'text' of item is not a string.");
 	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildSubList': Property 'list' of item is not an array.");
-	subLists.push(list);
 	temp.push(["button", [
 		"icon" in data ? buildIcon(data.icon) : null,
 		["span", text, { class: "context-menu-item-text" }]
-	], { class: "context-menu-item collection" }, "list", true]);
+	], { class: "context-menu-item collection", "data-sub": subLists.length, [EVENT_LISTENERS]: [["pointerenter", subMouseInEvent]] }, "list", true]);
+	subLists.push(list);
 	return drawContext.measureText(text).actualBoundingBoxRight + 80;
 }
 function buildGroup(data, temp, callbacks, subLists) {
@@ -352,13 +352,14 @@ function measureMenu(style, width, height, anchor, { horizontal: forceHorizontal
 	}
 }
 var context = null;
-function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
+function showMenu(list, anchor = undefined, onClose = null, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
 	if (arguments.length > 1 && !(anchor instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
+	if (arguments.length > 2 && typeof onClose != "function") throw new TypeError("Failed to execute 'showMenu': Argu ment 'onClose' is not a function.");
 	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
 	deposeMenu();
-	const topLevel = buildList(list, darkStyle), element = topLevel.element, route = new WeakMap;
-	context = { levels: [topLevel], route, currentLevel: 0, focus: null };
+	const topLevel = buildList(list, darkStyle = Boolean(darkStyle)), element = topLevel.element, route = new WeakMap;
+	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose };
 	route.set(element, topLevel);
 	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning);
 	delete topLevel.maxItemWidth;
@@ -368,7 +369,27 @@ function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = fal
 	document.body.appendChild(element);
 	document.activeElement.blur();
 	addGlobalListener();
-	console.log(context)
+}
+function showNext(element, subList) {
+	const level = buildList(subList, context.darkStyle), body = level.element;
+	measureMenu(level.element.style, level.maxItemWidth, level.itemsHeight, { side: "right", align: "top", element, marginX: 4, marginY: 4 }, { horizontal: false, vertical: false });
+	delete level.maxItemWidth;
+	delete level.itemsHeight;
+	level.super = element;
+	context.levels.push(level);
+	context.route.set(body, level);
+	++context.currentLevel;
+	element.classList.add("active");
+	element.parentElement.appendChild(body);
+}
+function deposeSub(index) {
+	const levels = context.levels,
+		level = levels[index],
+		element = level.element;
+	level.super.classList.remove("active");
+	element.remove();
+	levels.splice(index);
+	context.currentLevel = index - 1;
 }
 function preventEvent(event) {
 	event.preventDefault();
@@ -379,19 +400,30 @@ function itemClickEvent(event) {
 	console.log(event.type, target);
 	event.stopPropagation();
 	if (target.className == "context-menu-item") {
-		const callback = target.dataset.callback;
-		if (callback) try { context.route.get(target.parentElement).callbacks[callback].callback() } catch (e) { console.error("Uncaught", e) };
+		const callback = context.route.get(target.parentElement).callbacks[target.dataset.callback]?.callback;
 		deposeMenu();
+		if (callback) callback();
 	}
 }
 function itemMouseInEvent(event) {
 	context.focus?.blur();
-	context.focus = event.target;
-	console.log(context.focus);
+	const target = event.target,
+		index = context.levels.indexOf(context.route.get(target.parentElement))
+	if (index < context.currentLevel) deposeSub(index + 1);
+	context.focus = target;
 }
 function itemMouseOutEvent() {
 	context.focus.blur();
 	context.focus = null;
+}
+function subMouseInEvent(event) {
+	const target = event.target,
+		index = context.levels.indexOf(context.route.get(target.parentElement))
+	if (index < context.currentLevel) deposeSub(index + 1);
+	context.focus?.blur();
+	context.focus = target;
+	if (target.classList.contains("active")) return;
+	showNext(target, context.route.get(target.parentElement).subLists[target.dataset.sub])
 }
 function globalClickEvent(event) {
 	if (!context.levels[0].element.contains(event.target)) deposeMenu();
@@ -399,8 +431,11 @@ function globalClickEvent(event) {
 function keyBoardMove(direction) {
 	const lastFocus = context.focus;
 	if (lastFocus) {
-		const list = context.route.get(lastFocus.parentElement).itemsList;
-		let index = list.indexOf(lastFocus);
+		const level = context.route.get(lastFocus.parentElement),
+			list = level.itemsList;
+		let index = context.levels.indexOf(level);
+		if (index < context.currentLevel) deposeSub(index + 1);
+		index = list.indexOf(lastFocus);
 		if (direction) {
 			if (++index > list.length - 1) index = 0;
 		} else if (--index < 0) index = list.length - 1;
@@ -410,7 +445,7 @@ function keyBoardMove(direction) {
 	} else {
 		const list = context.levels[context.currentLevel].itemsList, length = list.length;
 		if (!length) return;
-		const target = list[direction ? 0: length - 1];
+		const target = list[direction ? 0 : length - 1];
 		target.focus();
 		context.focus = target;
 	}
@@ -424,7 +459,7 @@ function keyBoardEvent(event) {
 		if (item.shortcut && callback && item.ctrl == event.ctrlKey && item.alt == event.altKey && item.shift == event.shiftKey && item.key == key.toLowerCase()) {
 			event.preventDefault();
 			deposeMenu();
-			try { callback() } catch (e) { console.error("Uncaught", e) };
+			callback();
 			return;
 		}
 	}

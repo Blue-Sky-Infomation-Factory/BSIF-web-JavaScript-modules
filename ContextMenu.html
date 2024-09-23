@@ -9,8 +9,8 @@
 	<link rel="stylesheet" href="/css/main.css">
 	<script type="module">
 		import showMenu from "./ContextMenu.mjs";
-		const {promise,resolve} = Promise.withResolvers();
-		window.addEventListener("click", resolve, {once:true});
+		const { promise, resolve } = Promise.withResolvers();
+		window.addEventListener("click", resolve, { once: true });
 		//const event = await promise;
 		showMenu([
 			{
@@ -47,7 +47,7 @@
 				keys: {
 					key: "F5"
 				},
-				onselect(){
+				onselect() {
 					console.log("test")
 				}
 			},
@@ -73,13 +73,31 @@
 					key: "B"
 				},
 				checked: true,
-				onselect(e){
+				onselect(e) {
 					console.log(e)
 				}
 			},
 			{
 				type: "sub-list",
 				text: "折叠",
+				list: [{
+					type: "item",
+					text: "覆盖快捷键",
+					keys: {
+						key: "F5"
+					},
+					onselect() {
+						throw null
+					}
+				},
+				{
+					type: "item",
+					text: "多选项组"
+				}]
+			},
+			{
+				type: "sub-list",
+				text: "子菜单互斥测试",
 				list: []
 			},
 			{
@@ -101,4 +119,5 @@
 <body>
 </body>
 <div id="test-anchor" style="width:32px;height:32px;background-color:red;position:absolute;top:384px;left:512px;"></div>
+
 </html>
