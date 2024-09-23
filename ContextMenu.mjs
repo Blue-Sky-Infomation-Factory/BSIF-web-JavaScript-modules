@@ -13,7 +13,7 @@ document.head.appendChild(parse([
 		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
 		".context-menu-item,.context-menu-empty{height:28px;display:grid}",
 		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:#000;grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
-		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-item:hover{background-color:#D3DFE9}",
+		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-list:not(:focus-within)>.context-menu-item:hover{background-color:#D3DFE9}",
 		".context-menu-item:active{background-color:#BCD}",
 		".context-menu-item:disabled{opacity:0.5;pointer-events:none}",
 		".context-menu-item-icon{grid-area:icon;width:16px;height:16px;place-self:center;overflow:hidden}",
@@ -95,6 +95,7 @@ function buildKeys(data, callbackData) {
 	if (!(data instanceof Object)) throw new TypeError("Failed to execute 'buildKeys': Property 'keys' of item is not an object.");
 	const key = data.key;
 	if (typeof key != "string" || !key) throw new Error("Failed to execute 'buildKeys': Property 'keys' of object must be a non-empty string.")
+	callbackData.key = key.toLowerCase();
 	const keys = [];
 	if (callbackData.ctrl = Boolean(data.ctrl)) keys.push("Ctrl");
 	if (callbackData.alt = Boolean(data.alt)) keys.push("Alt");
@@ -147,7 +148,7 @@ function buildItem(data, temp, callbacks) {
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildItem': Property 'text' of item is not a string.");
 	var keysWidth = 0, keyText = null, callback;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
-	const properties = { class: "context-menu-item" };
+	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] };
 	if ("onselect" in data) {
 		const onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onselect' of item is not a function.");
@@ -169,7 +170,8 @@ function buildCheckItem(data, temp, callbacks) {
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildCheckItem': Property 'text' of item is not a string.");
 	var keysWidth = 0, keyText = null, callback;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
-	const properties = { class: "context-menu-item" }, checked = Boolean(data.checked), id = data.id;
+	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] },
+		checked = Boolean(data.checked), id = data.id;
 	if ("onselect" in data) {
 		let onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onselect' of item is not a function.");
@@ -356,7 +358,7 @@ function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = fal
 	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
 	deposeMenu();
 	const topLevel = buildList(list, darkStyle), element = topLevel.element, route = new WeakMap;
-	context = { levels: [topLevel], route, currentLevel: 0 };
+	context = { levels: [topLevel], route, currentLevel: 0, focus: null };
 	route.set(element, topLevel);
 	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning);
 	delete topLevel.maxItemWidth;
@@ -364,6 +366,7 @@ function showMenu(list, anchor = undefined, onClose = undefined, darkStyle = fal
 	element.addEventListener("click", itemClickEvent);
 	element.addEventListener("contextmenu", preventEvent);
 	document.body.appendChild(element);
+	document.activeElement.blur();
 	addGlobalListener();
 	console.log(context)
 }
@@ -372,30 +375,83 @@ function preventEvent(event) {
 	event.stopImmediatePropagation();
 }
 function itemClickEvent(event) {
-	console.log(event.type, event.target);
-	if (event.target.className == "context-menu-item") deposeMenu();
+	const target = event.target;
+	console.log(event.type, target);
 	event.stopPropagation();
+	if (target.className == "context-menu-item") {
+		const callback = target.dataset.callback;
+		if (callback) try { context.route.get(target.parentElement).callbacks[callback].callback() } catch (e) { console.error("Uncaught", e) };
+		deposeMenu();
+	}
+}
+function itemMouseInEvent(event) {
+	context.focus?.blur();
+	context.focus = event.target;
+	console.log(context.focus);
+}
+function itemMouseOutEvent() {
+	context.focus.blur();
+	context.focus = null;
 }
 function globalClickEvent(event) {
 	if (!context.levels[0].element.contains(event.target)) deposeMenu();
 }
-/**
- * 
- * @param {KeyboardEvent} event 
- */
+function keyBoardMove(direction) {
+	const lastFocus = context.focus;
+	if (lastFocus) {
+		const list = context.route.get(lastFocus.parentElement).itemsList;
+		let index = list.indexOf(lastFocus);
+		if (direction) {
+			if (++index > list.length - 1) index = 0;
+		} else if (--index < 0) index = list.length - 1;
+		const target = list[index];
+		target.focus();
+		context.focus = target;
+	} else {
+		const list = context.levels[context.currentLevel].itemsList, length = list.length;
+		if (!length) return;
+		const target = list[direction ? 0: length - 1];
+		target.focus();
+		context.focus = target;
+	}
+}
 function keyBoardEvent(event) {
-	console.log(event.type, event.key);
-	const { key, ctrlKey: ctrl, altKey: alt, shiftKey: shift } = event;
+	const key = event.key;
 	if (key == "Tab") event.preventDefault();
+	const levels = context.levels;
+	for (let i = levels.length - 1; i > -1; --i) for (const item of levels[i].callbacks) {
+		const callback = item.callback;
+		if (item.shortcut && callback && item.ctrl == event.ctrlKey && item.alt == event.altKey && item.shift == event.shiftKey && item.key == key.toLowerCase()) {
+			event.preventDefault();
+			deposeMenu();
+			try { callback() } catch (e) { console.error("Uncaught", e) };
+			return;
+		}
+	}
+	var preventDefault = true;
+	switch (key) {
+		case "ArrowUp":
+			keyBoardMove(false);
+			break;
+		case "ArrowDown":
+			keyBoardMove(true);
+			break;
+		case "ArrowLeft":
+		case "ArrowRight":
+			break;
+		default:
+			preventDefault = false;
+	}
+	if (preventDefault) event.preventDefault();
 }
 function addGlobalListener() {
 	window.addEventListener("blur", deposeMenu);
-	document.addEventListener("click", globalClickEvent, { capture: true });
+	document.addEventListener("pointerdown", globalClickEvent, { capture: true });
 	document.addEventListener("keydown", keyBoardEvent, { capture: true });
 }
 function removeGlobalListener() {
 	window.removeEventListener("blur", deposeMenu);
-	document.removeEventListener("click", globalClickEvent, { capture: true });
+	document.removeEventListener("pointerdown", globalClickEvent, { capture: true });
 	document.removeEventListener("keydown", keyBoardEvent, { capture: true });
 }
 function deposeMenu() {
