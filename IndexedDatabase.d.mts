@@ -30,6 +30,7 @@ declare class IndexedDatabase implements CRUD {
 	getObjectStoreDetail(objectStoreName: string): ObjectStoreDetail;
 }
 declare class IndexedDatabaseUpgrader {
+	readonly objectStoreNames: DOMStringList;
 	private constructor();
 	readonly oldVersion: number;
 	readonly newVersion: number;

@@ -258,6 +258,7 @@ class IndexedDatabaseUpgrader {
 	#newVersion;
 	get newVersion() { return this.#newVersion }
 	static #rejectConstruct = true;
+	get objectStoreNames() { return this.#db.objectStoreNames }
 	constructor(db, oldVersion, newVersion) {
 		if (IndexedDatabaseUpgrader.#rejectConstruct) throw new TypeError("Illegal constructor");
 		IndexedDatabaseUpgrader.#rejectConstruct = true;
