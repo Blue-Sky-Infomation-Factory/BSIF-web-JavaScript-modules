@@ -8,23 +8,24 @@ drawContext.font = font;
 const { layer, shadow } = parseAndGetNodes([["div", [["#shadow", [
 	["style", [
 		":host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none}",
-		`.context-menu-list{position:fixed;pointer-events:all;min-width:64px;max-width:min(384px, 100%);max-height:100%;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none}`,
+		`.context-menu-list{position:fixed;pointer-events:all;min-width:64px;max-width:min(384px, 100%);max-height:100%;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none;--item-text:#000;--item-highlight:#CDE;--item-active:#ABC;--weak:#888;color:var(--item-text)}`,
 		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
 		".context-menu-item>*{pointer-events:none}",
 		".context-menu-empty{opacity:0.5;place-content:center}",
 		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
 		".context-menu-item,.context-menu-empty{height:28px;display:grid}",
-		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:#000;grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
-		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-list:not(:focus-within)>.context-menu-item:hover,.context-menu-item.collection.active{background-color:#D3DFE9}",
-		".context-menu-item:active{background-color:#BCD}",
+		".context-menu-item.collection::after{content:\"\";width:4px;height:8px;background-color:var(--item-text);grid-area:symbol;place-self:center;clip-path:polygon(0 0, 100% 50%, 0 100%)}",
+		".context-menu-item:focus,.context-menu-item:focus-within,.context-menu-list:not(:focus-within)>.context-menu-item:hover,.context-menu-item.collection.active{background-color:var(--item-highlight)}",
+		".context-menu-item:active{background-color:var(--item-active)}",
 		".context-menu-item:disabled{opacity:0.5;pointer-events:none}",
 		".context-menu-item-icon{grid-area:icon;width:16px;height:16px;place-self:center;overflow:hidden}",
 		".context-menu-item-icon.image{background-size:cover;background-position:center}",
 		".context-menu-item-icon.font{font-size:16px}",
 		".context-menu-item-checkbox{grid-area:icon;place-self:center;outline:0;cursor:pointer}",
 		".context-menu-item-text{grid-area:text;align-self:center}",
-		".context-menu-item-keys{grid-area:keys;align-self:center;text-align:right;color:#888}",
-		".context-menu-hr{border:0;background-color:#909090;height:1px;width:100%;margin:0}"
+		".context-menu-item-keys{grid-area:keys;align-self:center;text-align:right;color:var(--weak)}",
+		".context-menu-hr{border:0;background-color:var(--weak);height:1px;width:100%;margin:0}",
+		".context-menu-list.dark{background-color:#111;border-color:#AAA;box-shadow: 2px 2px 4px 0 #FFFFFF60;--item-text:#DDD;--item-highlight:#444;--item-active:#333;--weak:#777}",
 	]]
 ], { mode: "closed" }, "shadow"]], { id: "context-menu-layer" }, "layer"]], document.body);
 function buildList(list, darkStyle) {
@@ -83,7 +84,7 @@ function buildList(list, darkStyle) {
 		itemsHeight += 28
 		previousHr = true;
 	}
-	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: "context-menu-list" }, "element"]]).nodes;
+	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes;
 	return {
 		element,
 		maxItemWidth: maxItemWidth + 8,
