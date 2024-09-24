@@ -538,12 +538,14 @@ function keyboardEvent(event) {
 }
 function addGlobalListener() {
 	window.addEventListener("blur", deposeMenu);
+	document.addEventListener("scroll", deposeMenu, { capture: true, once: true, passive: true });
 	document.addEventListener("pointerdown", globalClickEvent, { capture: true });
 	document.addEventListener("keydown", keyboardEvent, { capture: true });
 	resizeObserver.observe(layer);
 }
 function removeGlobalListener() {
 	window.removeEventListener("blur", deposeMenu);
+	document.removeEventListener("scroll", deposeMenu, { capture: true });
 	document.removeEventListener("pointerdown", globalClickEvent, { capture: true });
 	document.removeEventListener("keydown", keyboardEvent, { capture: true });
 	resizeObserver.unobserve(layer);
