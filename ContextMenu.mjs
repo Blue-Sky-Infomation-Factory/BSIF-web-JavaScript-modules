@@ -1,12 +1,14 @@
-import { EVENT_LISTENERS, OBJECT_PROPERTIES, parse, parseAndGetNodes } from "./ArrayHTML.mjs";
+import { EVENT_LISTENERS, OBJECT_PROPERTIES, parseAndGetNodes } from "./ArrayHTML.mjs";
 const font = "12px ui-sans-serif",
 	drawContext = document.createElement("canvas").getContext("2d"),
+	resizeObserver = new ResizeObserver(deposeMenu),
 	horizontalParam = ["left", "right"],
 	verticalParam = ["top", "bottom"];
 drawContext.font = font;
-document.head.appendChild(parse([
+const { layer, shadow } = parseAndGetNodes([["div", [["#shadow", [
 	["style", [
-		`.context-menu-list{position:fixed;z-index:1610612736;max-width:min(384px, 100vw);max-height:100vh;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none}`,
+		":host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none}",
+		`.context-menu-list{position:fixed;pointer-events:all;min-width:64px;max-width:min(384px, 100%);max-height:100%;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none}`,
 		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
 		".context-menu-item>*{pointer-events:none}",
 		".context-menu-empty{opacity:0.5;place-content:center}",
@@ -24,7 +26,7 @@ document.head.appendChild(parse([
 		".context-menu-item-keys{grid-area:keys;align-self:center;text-align:right;color:#888}",
 		".context-menu-hr{border:0;background-color:#909090;height:1px;width:100%;margin:0}"
 	]]
-]));
+], { mode: "closed" }, "shadow"]], { id: "context-menu-layer" }, "layer"]], document.body);
 function buildList(list, darkStyle) {
 	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildList': Argument 'list' must be an array.");
 	const temp = [], length = list.length, subLists = [], callbacks = [];
@@ -227,10 +229,10 @@ function buildEmpty(temp) {
 	return drawContext.measureText("空").actualBoundingBoxRight;
 }
 function pointPosition(style, width, height, x, y, horizontalDirection, verticalDirection, forceHorizontal, forceVertical) {
-	const { innerWidth, innerHeight } = window;
-	if (x < 0) { x = 0 } else if (x > innerWidth) x = innerWidth;
-	if (y < 0) { y = 0 } else if (y > innerHeight) y = innerHeight;
-	const right = innerWidth - x, bottom = innerHeight - y;
+	const { clientWidth: viewWidth, clientHeight: viewHeight } = layer;
+	if (x < 0) { x = 0 } else if (x > viewWidth) x = viewWidth;
+	if (y < 0) { y = 0 } else if (y > viewHeight) y = viewHeight;
+	const right = viewWidth - x, bottom = viewHeight - y;
 	if (forceHorizontal) {
 		if (horizontalDirection) {
 			style.left = x + "px";
@@ -255,14 +257,14 @@ function pointPosition(style, width, height, x, y, horizontalDirection, vertical
 	} else style[verticalDirection ? "top" : "bottom"] = y + "px";
 }
 function elementPosition(style, anchorElement, marginX, marginY, horizontalSide, width, height, side, align, forceHorizontal, forceVertical) {
-	const { innerWidth, innerHeight } = window;
+	const { clientWidth: viewWidth, clientHeight: viewHeight } = layer;
 	var { top, bottom, left, right } = anchorElement.getBoundingClientRect();
-	if ((top -= marginY) < 0) { top = 0 } else if (top > innerHeight) top = innerHeight;
-	if ((bottom += marginY) < 0) { bottom = 0 } else if (bottom > innerHeight) bottom = innerHeight;
-	if ((left -= marginX) < 0) { left = 0 } else if (left > innerWidth) left = innerWidth;
-	if ((right += marginX) < 0) { right = 0 } else if (right > innerWidth) right = innerWidth;
-	const rightSpace1 = innerWidth - left, rightSpace2 = innerWidth - right,
-		bottomSpace1 = innerHeight - top, bottomSpace2 = innerHeight - bottom;
+	if ((top -= marginY) < 0) { top = 0 } else if (top > viewHeight) top = viewHeight;
+	if ((bottom += marginY) < 0) { bottom = 0 } else if (bottom > viewHeight) bottom = viewHeight;
+	if ((left -= marginX) < 0) { left = 0 } else if (left > viewWidth) left = viewWidth;
+	if ((right += marginX) < 0) { right = 0 } else if (right > viewWidth) right = viewWidth;
+	const rightSpace1 = viewWidth - left, rightSpace2 = viewWidth - right,
+		bottomSpace1 = viewHeight - top, bottomSpace2 = viewHeight - bottom;
 	var horizontalDirection, verticalDirection;
 	if (horizontalSide) {
 		horizontalDirection = side == "right";
@@ -359,14 +361,14 @@ function showMenu(list, anchor = undefined, onClose = null, darkStyle = false, k
 	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
 	deposeMenu();
 	const topLevel = buildList(list, darkStyle = Boolean(darkStyle)), element = topLevel.element, route = new WeakMap;
-	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose };
+	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose, resize: false };
 	route.set(element, topLevel);
 	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning);
 	delete topLevel.maxItemWidth;
 	delete topLevel.itemsHeight;
 	element.addEventListener("click", itemClickEvent);
 	element.addEventListener("contextmenu", preventEvent);
-	document.body.appendChild(element);
+	shadow.appendChild(element);
 	document.activeElement.blur();
 	addGlobalListener();
 	const items = topLevel.itemsList;
@@ -447,9 +449,7 @@ function subMouseInEvent(event) {
 	if (target.classList.contains("active")) return;
 	showNext(target, context.route.get(target.parentElement).subLists[target.dataset.sub]);
 }
-function globalClickEvent(event) {
-	if (!context.levels[0].element.contains(event.target)) deposeMenu();
-}
+function globalClickEvent(event) { if (event.target != layer) deposeMenu() }
 function keyboardMove(direction) {
 	const lastFocus = context.focus;
 	if (lastFocus) {
@@ -498,7 +498,13 @@ function keyboardEvent(event) {
 			break;
 		case "ArrowLeft": {
 			let level = context.currentLevel
-			if (level) keyboardBack(level);
+			if (level) {
+				keyboardBack(level);
+			} else {
+				const list = context.levels[0].itemsList;
+				if (!list.length || list.includes(context.focus)) break;
+				(context.focus = list[0]).focus();
+			}
 			break;
 		}
 		case "ArrowRight": {
@@ -534,19 +540,26 @@ function addGlobalListener() {
 	window.addEventListener("blur", deposeMenu);
 	document.addEventListener("pointerdown", globalClickEvent, { capture: true });
 	document.addEventListener("keydown", keyboardEvent, { capture: true });
+	resizeObserver.observe(layer);
 }
 function removeGlobalListener() {
 	window.removeEventListener("blur", deposeMenu);
 	document.removeEventListener("pointerdown", globalClickEvent, { capture: true });
 	document.removeEventListener("keydown", keyboardEvent, { capture: true });
+	resizeObserver.unobserve(layer);
 }
-function deposeMenu() {
+function deposeMenu(e) {
 	if (!context) return;
+	if (Array.isArray(e) && !context.resize) {
+		context.resize = true;
+		return;
+	}
 	removeGlobalListener();
 	context.levels[0].element.remove();
 	const onClose = context.onClose;
 	if (onClose) queueMicrotask(onClose);
 	context = null;
 }
-export { showMenu, drawContext };
+function closeMenu() { deposeMenu() }
+export { showMenu, closeMenu };
 export default showMenu;

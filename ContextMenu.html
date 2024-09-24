@@ -4,13 +4,16 @@
 <head>
 	<meta charset="utf-8">
 	<title>HTML Creator</title>
-	<!-- 外部样式 -->
-	<link rel="stylesheet" href="/css/main.css">
+	<style>
+		:root{
+			overflow: scroll;
+		}
+	</style>
 	<script type="module">
 		import showMenu from "./ContextMenu.mjs";
-		const { promise, resolve } = Promise.withResolvers();
-		window.addEventListener("click", resolve, { once: true });
-		//const event = await promise;
+		// const { promise, resolve } = Promise.withResolvers();
+		// window.addEventListener("click", resolve, { once: true });
+		// await promise;
 		showMenu([
 			{
 				type: "group",
