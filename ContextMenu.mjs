@@ -196,7 +196,7 @@ function buildSubList(data, temp, subLists) {
 	temp.push(["button", [
 		"icon" in data ? buildIcon(data.icon) : null,
 		["span", text, { class: "context-menu-item-text" }]
-	], { class: "context-menu-item collection", "data-sub": subLists.length, [EVENT_LISTENERS]: [["pointerenter", subMouseInEvent]] }, "list", true]);
+	], { class: "context-menu-item collection", "data-sub": subLists.length, [EVENT_LISTENERS]: [["pointerenter", subMouseInEvent], ["pointerleave", itemMouseOutEvent]] }, "list", true]);
 	subLists.push(list);
 	return drawContext.measureText(text).actualBoundingBoxRight + 80;
 }
@@ -355,7 +355,7 @@ var context = null;
 function showMenu(list, anchor = undefined, onClose = null, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
 	if (arguments.length > 1 && !(anchor instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
-	if (arguments.length > 2 && typeof onClose != "function") throw new TypeError("Failed to execute 'showMenu': Argu ment 'onClose' is not a function.");
+	if (arguments.length > 2 && onClose && typeof onClose != "function") throw new TypeError("Failed to execute 'showMenu': Argu ment 'onClose' is not a function.");
 	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
 	deposeMenu();
 	const topLevel = buildList(list, darkStyle = Boolean(darkStyle)), element = topLevel.element, route = new WeakMap;
@@ -369,9 +369,18 @@ function showMenu(list, anchor = undefined, onClose = null, darkStyle = false, k
 	document.body.appendChild(element);
 	document.activeElement.blur();
 	addGlobalListener();
+	const items = topLevel.itemsList;
+	if (keyboardMode && items.length) (context.focus = items[0]).focus();
 }
-function showNext(element, subList) {
-	const level = buildList(subList, context.darkStyle), body = level.element;
+function showNext(element, subList, keyboardMode = false) {
+	try {
+		var level = buildList(subList, context.darkStyle);
+	} catch (error) {
+		deposeMenu();
+		console.error("An error occurred while rendering sub menu, system exited.\n", error);
+		return;
+	}
+	const body = level.element;
 	measureMenu(level.element.style, level.maxItemWidth, level.itemsHeight, { side: "right", align: "top", element, marginX: 4, marginY: 4 }, { horizontal: false, vertical: false });
 	delete level.maxItemWidth;
 	delete level.itemsHeight;
@@ -381,6 +390,8 @@ function showNext(element, subList) {
 	++context.currentLevel;
 	element.classList.add("active");
 	element.parentElement.appendChild(body);
+	const items = level.itemsList;
+	if (keyboardMode && items.length) (context.focus = items[0]).focus();
 }
 function deposeSub(index) {
 	const levels = context.levels,
@@ -396,10 +407,21 @@ function preventEvent(event) {
 	event.stopImmediatePropagation();
 }
 function itemClickEvent(event) {
-	const target = event.target;
-	console.log(event.type, target);
+	const target = event.target,
+		classList = target.classList;
 	event.stopPropagation();
-	if (target.className == "context-menu-item") {
+	if (!classList.contains("context-menu-item")) return;
+	if (classList.contains("collection")) {
+		context.focus = target;
+		const index = context.levels.indexOf(context.route.get(target.parentElement));
+		if (target.classList.contains("active")) {
+			if (event.pointerType) target.blur();
+			deposeSub(index + 1);
+		} else {
+			if (index < context.currentLevel) deposeSub(index + 1);
+			showNext(target, context.route.get(target.parentElement).subLists[target.dataset.sub], !event.pointerType);
+		}
+	} else {
 		const callback = context.route.get(target.parentElement).callbacks[target.dataset.callback]?.callback;
 		deposeMenu();
 		if (callback) callback();
@@ -413,7 +435,7 @@ function itemMouseInEvent(event) {
 	context.focus = target;
 }
 function itemMouseOutEvent() {
-	context.focus.blur();
+	context.focus?.blur();
 	context.focus = null;
 }
 function subMouseInEvent(event) {
@@ -423,12 +445,12 @@ function subMouseInEvent(event) {
 	context.focus?.blur();
 	context.focus = target;
 	if (target.classList.contains("active")) return;
-	showNext(target, context.route.get(target.parentElement).subLists[target.dataset.sub])
+	showNext(target, context.route.get(target.parentElement).subLists[target.dataset.sub]);
 }
 function globalClickEvent(event) {
 	if (!context.levels[0].element.contains(event.target)) deposeMenu();
 }
-function keyBoardMove(direction) {
+function keyboardMove(direction) {
 	const lastFocus = context.focus;
 	if (lastFocus) {
 		const level = context.route.get(lastFocus.parentElement),
@@ -440,40 +462,69 @@ function keyBoardMove(direction) {
 			if (++index > list.length - 1) index = 0;
 		} else if (--index < 0) index = list.length - 1;
 		const target = list[index];
-		target.focus();
-		context.focus = target;
+		(context.focus = target).focus();
 	} else {
 		const list = context.levels[context.currentLevel].itemsList, length = list.length;
 		if (!length) return;
 		const target = list[direction ? 0 : length - 1];
-		target.focus();
-		context.focus = target;
+		(context.focus = target).focus();
 	}
 }
-function keyBoardEvent(event) {
-	const key = event.key;
+function keyboardBack(index) {
+	(context.focus = context.levels[index].super).focus();
+	deposeSub(index);
+}
+function keyboardEvent(event) {
+	const { key, ctrlKey, altKey, shiftKey } = event;
 	if (key == "Tab") event.preventDefault();
 	const levels = context.levels;
 	for (let i = levels.length - 1; i > -1; --i) for (const item of levels[i].callbacks) {
 		const callback = item.callback;
-		if (item.shortcut && callback && item.ctrl == event.ctrlKey && item.alt == event.altKey && item.shift == event.shiftKey && item.key == key.toLowerCase()) {
+		if (item.shortcut && callback && item.ctrl == ctrlKey && item.alt == altKey && item.shift == shiftKey && item.key == key.toLowerCase()) {
 			event.preventDefault();
 			deposeMenu();
 			callback();
 			return;
 		}
 	}
+	if (ctrlKey || altKey || shiftKey) return;
 	var preventDefault = true;
 	switch (key) {
 		case "ArrowUp":
-			keyBoardMove(false);
+			keyboardMove(false);
 			break;
 		case "ArrowDown":
-			keyBoardMove(true);
+			keyboardMove(true);
 			break;
-		case "ArrowLeft":
-		case "ArrowRight":
+		case "ArrowLeft": {
+			let level = context.currentLevel
+			if (level) keyboardBack(level);
 			break;
+		}
+		case "ArrowRight": {
+			const lastFocus = context.focus,
+				sub = lastFocus?.dataset.sub;
+			if (lastFocus && sub && !lastFocus.classList.contains("active")) {
+				showNext(lastFocus, context.route.get(lastFocus.parentElement).subLists[sub], true);
+			} else {
+				const list = context.levels[context.currentLevel].itemsList;
+				if (!list.length || list.includes(lastFocus)) break;
+				(context.focus = list[0]).focus();
+			}
+			break;
+		}
+		case "Escape": {
+			let level = context.currentLevel
+			if (level) { keyboardBack(level) } else deposeMenu();
+			break;
+		}
+		case "Enter": {
+			const lastFocus = context.focus;
+			if (lastFocus && document.activeElement != lastFocus) {
+				lastFocus.click();
+				break;
+			}
+		}
 		default:
 			preventDefault = false;
 	}
@@ -482,17 +533,19 @@ function keyBoardEvent(event) {
 function addGlobalListener() {
 	window.addEventListener("blur", deposeMenu);
 	document.addEventListener("pointerdown", globalClickEvent, { capture: true });
-	document.addEventListener("keydown", keyBoardEvent, { capture: true });
+	document.addEventListener("keydown", keyboardEvent, { capture: true });
 }
 function removeGlobalListener() {
 	window.removeEventListener("blur", deposeMenu);
 	document.removeEventListener("pointerdown", globalClickEvent, { capture: true });
-	document.removeEventListener("keydown", keyBoardEvent, { capture: true });
+	document.removeEventListener("keydown", keyboardEvent, { capture: true });
 }
 function deposeMenu() {
 	if (!context) return;
 	removeGlobalListener();
 	context.levels[0].element.remove();
+	const onClose = context.onClose;
+	if (onClose) queueMicrotask(onClose);
 	context = null;
 }
 export { showMenu, drawContext };
