@@ -1,5 +1,6 @@
 type CommonItem = {
-	text: string
+	text: string,
+	id: any
 };
 type UrlBase = { url: string };
 type ImageIcon = { type: "image" } & UrlBase;
@@ -27,14 +28,13 @@ type KeySet = {
 }
 type MenuItem = {
 	type: "item",
-	onselect?: () => any,
+	onselect?: (id: any) => any
 	keys?: KeySet
 } & IconItem;
 type CheckItem = {
 	type: "check-item",
 	checked: boolean,
-	id: any,
-	onselect?: (toState: boolean, id: any) => any
+	onselect?: (id: any, toState: boolean) => any
 } & CommonItem;
 type ContainerItemTypes = MenuItem | CheckItem | SubList;
 type Group = {
@@ -59,22 +59,33 @@ type ElementVerticalAnchor = {
 	side: "top" | "bottom",
 	align: "left" | "right"
 };
+type showMenuOptions = {
+	/** 菜单被关闭时的回调 */
+	onClose?: () => any,
+	/** 是否使用暗黑风格，默认 false 否 */
+	darkStyle?: boolean,
+	/** 显示菜单后进入键盘操作模式，默认 false 否 */
+	keyboardMode?: boolean,
+	/** 当屏幕空间不足以使菜单完全展开时，菜单是否应严格遵守指定的定位方法 */
+	enforcePositioning?: {
+		/** 水平方向，默认 false 否 */
+		horizontal?: boolean,
+		/** 垂直方向，默认 false 否 */
+		vertical?: boolean
+	},
+	/** 使用纯净列表模式，默认 false 否 */
+	pureList?: boolean
+};
 /**
  * 显示一个自定义的上下文菜单，可依据鼠标事件、元素、坐标进行定位。
  * @param list 菜单的内容
  * @param anchor 菜单参考的锚点
- * @param onClose 菜单被关闭时的回调
- * @param darkStyle 是否使用暗黑风格
- * @param keyboardMode 显示菜单后进入键盘操作模式
- * @param enforcePositioning 当屏幕空间不足以使菜单完全展开时，菜单是否应严格遵守指定的定位方法
+ * @param options 选项
  */
 declare function showMenu(
 	list: ListItemsTypes[],
-	anchor: MouseEvent | ElementAnchor | Point,
-	onClose?: () => any,
-	darkStyle = false,
-	keyboardMode = false,
-	enforcePositioning?: { horizontal?: boolean, vertical?: boolean }
+	anchor?: MouseEvent | ElementAnchor | Point,
+	options?: showMenuOptions
 ): void;
 export { showMenu };
 export default showMenu;

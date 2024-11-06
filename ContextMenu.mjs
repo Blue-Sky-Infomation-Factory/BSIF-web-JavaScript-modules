@@ -1,5 +1,5 @@
 import { EVENT_LISTENERS, OBJECT_PROPERTIES, parseAndGetNodes } from "./ArrayHTML.mjs";
-const font = "12px ui-sans-serif",
+const font = "12px Arial",
 	drawContext = document.createElement("canvas").getContext("2d"),
 	resizeObserver = new ResizeObserver(deposeMenu),
 	horizontalParam = ["left", "right"],
@@ -7,9 +7,10 @@ const font = "12px ui-sans-serif",
 drawContext.font = font;
 const { layer, shadow } = parseAndGetNodes([["div", [["#shadow", [
 	["style", [
-		":host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none}",
-		`.context-menu-list{position:fixed;pointer-events:all;min-width:64px;max-width:min(384px, 100%);max-height:100%;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;font:${font};display:grid;gap:4px;outline:0;user-select:none;--item-text:#000;--item-highlight:#CDE;--item-active:#ABC;--weak:#888;color:var(--item-text)}`,
+		`:host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none;font:${font}}`,
+		".context-menu-list{position:fixed;pointer-events:all;min-width:64px;max-width:min(384px, 100%);max-height:100%;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;display:grid;gap:4px;outline:0;user-select:none;--item-text:#000;--item-highlight:#CDE;--item-active:#ABC;--weak:#888;color:var(--item-text)}",
 		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
+		".context-menu-item.pure{grid-template-columns:1fr;grid-template-areas:\"text\";padding-inline:8px}",
 		".context-menu-item>*{pointer-events:none}",
 		".context-menu-empty{opacity:0.5;place-content:center}",
 		".context-menu-item>span,.context-menu-empty>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
@@ -94,6 +95,51 @@ function buildList(list, darkStyle) {
 		subLists
 	}
 }
+function buildPureList(list, darkStyle) {
+	if (!Array.isArray(list)) throw new TypeError("Failed to execute 'buildList': Argument 'list' must be an array.");
+	const temp = [], length = list.length, subLists = [], callbacks = [];
+	if (!length) {
+		return {
+			maxItemWidth: buildEmpty(temp) + 8,
+			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes.element,
+			itemsHeight: 36,
+			itemsList: [],
+			callbacks,
+			subLists
+		};
+	}
+	var maxItemWidth = 0, itemsHeight = 0;
+	for (const item of list) {
+		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildPureList': Elements of list must be objects.");
+		if (item.type != "item") throw new Error("Failed to execute 'buildPureList': Pure list can only has normal item.");
+		const properties = { class: "context-menu-item pure", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] },
+			text = item.text;
+		if (typeof text != "string") throw new TypeError("Failed to execute 'buildPureList': Property 'text' of item is not a string.");
+		let callback;
+		if ("onselect" in item) {
+			const onselect = item.onselect;
+			if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildPureList': Property 'onselect' of item is not a function.");
+			callback = { shortcut: false, callback: onselect.bind(null, item.id) };
+		}
+		if (callback) {
+			properties["data-callback"] = callbacks.length;
+			callbacks.push(callback);
+		}
+		temp.push(["button", [["span", text, { class: "context-menu-item-text" }]], properties, "list", true]);
+		const itemWidth = drawContext.measureText(text).actualBoundingBoxRight + 16;
+		if (itemWidth > maxItemWidth) maxItemWidth = itemWidth < 376 ? itemWidth : 376;
+		itemsHeight += 28
+	}
+	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes;
+	return {
+		element,
+		maxItemWidth: maxItemWidth + 8,
+		itemsHeight: itemsHeight + (length - 1) * 4 + 8,
+		itemsList,
+		callbacks,
+		subLists
+	}
+}
 function buildKeys(data, callbackData) {
 	if (!(data instanceof Object)) throw new TypeError("Failed to execute 'buildKeys': Property 'keys' of item is not an object.");
 	const key = data.key;
@@ -153,8 +199,9 @@ function buildItem(data, temp, callbacks) {
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] };
 	if ("onselect" in data) {
-		const onselect = data.onselect;
+		let onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onselect' of item is not a function.");
+		onselect = onselect.bind(null, data.id);
 		if (callback) { callback.callback = onselect } else callback = { shortcut: false, callback: onselect };
 	}
 	if (callback) {
@@ -174,11 +221,11 @@ function buildCheckItem(data, temp, callbacks) {
 	var keysWidth = 0, keyText = null, callback;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] },
-		checked = Boolean(data.checked), id = data.id;
+		checked = Boolean(data.checked);
 	if ("onselect" in data) {
 		let onselect = data.onselect;
 		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onselect' of item is not a function.");
-		onselect = onselect.bind(null, !checked, id);
+		onselect = onselect.bind(null, data.id, !checked);
 		if (callback) { callback.callback = onselect } else callback = { shortcut: false, callback: onselect };
 	}
 	if (callback) {
@@ -355,16 +402,30 @@ function measureMenu(style, width, height, anchor, { horizontal: forceHorizontal
 	}
 }
 var context = null;
-function showMenu(list, anchor = undefined, onClose = null, darkStyle = false, keyboardMode = false, enforcePositioning = { horizontal: false, vertical: false }) {
+function showMenu(list, anchor = null, options = null) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
-	if (arguments.length > 1 && !(anchor instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
-	if (arguments.length > 2 && onClose && typeof onClose != "function") throw new TypeError("Failed to execute 'showMenu': Argu ment 'onClose' is not a function.");
-	if (!(enforcePositioning instanceof Object)) throw new TypeError("Failed to execute 'showMenu': Argument 'enforcePositioning' is not an object.");
+	if (arguments.length > 1 && typeof anchor != "object") throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
+	var onClose = null, darkStyle = false, keyboardMode = false, enforcePositioning, pureList = false;
+	if (arguments.length > 2) {
+		if (typeof options != "object" || !options) throw new TypeError("Failed to execute 'showMenu': Argument 'options' is not an object.");
+		if ("onClose" in options) {
+			onClose = options.onClose;
+			if (typeof onClose != "function") throw new TypeError("Failed to execute 'showMenu': Option 'onClose' is not a function.");
+		}
+		darkStyle = Boolean(options.darkStyle);
+		keyboardMode = Boolean(options.keyboardMode);
+		if ("enforcePositioning" in options) {
+			enforcePositioning = options.enforcePositioning;
+			if (typeof enforcePositioning != "object" || !enforcePositioning) throw new TypeError("Failed to execute 'showMenu': Option 'enforcePositioning' is not an object.");
+		}
+		pureList = Boolean(options.pureList);
+	}
 	deposeMenu();
-	const topLevel = buildList(list, darkStyle = Boolean(darkStyle)), element = topLevel.element, route = new WeakMap;
+	const topLevel = pureList ? buildPureList(list, darkStyle = Boolean(darkStyle)) : buildList(list, darkStyle = Boolean(darkStyle)),
+		element = topLevel.element, route = new WeakMap;
 	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose, resize: false };
 	route.set(element, topLevel);
-	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning);
+	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning ?? { horizontal: false, vertical: false });
 	delete topLevel.maxItemWidth;
 	delete topLevel.itemsHeight;
 	element.addEventListener("click", itemClickEvent);
