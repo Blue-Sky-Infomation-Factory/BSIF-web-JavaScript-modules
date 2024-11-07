@@ -1,6 +1,6 @@
 type CommonItem = {
 	text: string,
-	id: any
+	id?: any
 };
 type UrlBase = { url: string };
 type ImageIcon = { type: "image" } & UrlBase;
@@ -73,7 +73,7 @@ type showMenuOptions = {
 		/** 垂直方向，默认 false 否 */
 		vertical?: boolean
 	},
-	/** 使用纯净列表模式，默认 false 否 */
+	/** 使用纯净列表模式，默认 false 否。纯净列表只能使用普通项，并且会忽略图标与快捷键，同时删除渲染时预留给两者的空间 */
 	pureList?: boolean
 };
 /**
