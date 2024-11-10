@@ -423,7 +423,7 @@ function showMenu(list, anchor = null, options = null) {
 	deposeMenu();
 	const topLevel = pureList ? buildPureList(list, darkStyle = Boolean(darkStyle)) : buildList(list, darkStyle = Boolean(darkStyle)),
 		element = topLevel.element, route = new WeakMap;
-	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose, resize: false };
+	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose, resize: true };
 	route.set(element, topLevel);
 	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning ?? { horizontal: false, vertical: false });
 	delete topLevel.maxItemWidth;
@@ -437,8 +437,9 @@ function showMenu(list, anchor = null, options = null) {
 	if (keyboardMode && items.length) (context.focus = items[0]).focus();
 }
 function showNext(element, subList, keyboardMode = false) {
+	var level;
 	try {
-		var level = buildList(subList, context.darkStyle);
+		level = buildList(subList, context.darkStyle);
 	} catch (error) {
 		deposeMenu();
 		console.error("An error occurred while rendering sub menu, system exited.\n", error);
@@ -612,10 +613,10 @@ function removeGlobalListener() {
 	document.removeEventListener("keydown", keyboardEvent, { capture: true });
 	resizeObserver.unobserve(layer);
 }
-function deposeMenu(e) {
+function deposeMenu(event) {
 	if (!context) return;
-	if (Array.isArray(e) && !context.resize) {
-		context.resize = true;
+	if (Array.isArray(event) && context.resize) {
+		context.resize = false;
 		return;
 	}
 	removeGlobalListener();

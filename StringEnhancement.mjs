@@ -37,7 +37,7 @@ function lengthByCharacter() {
 	return characters;
 }
 function substringByCharacter(start, end = Infinity) {
-	if (arguments < 1) throw new TypeError("1 argument required, but only 0 present.");
+	if (arguments.length < 1) throw new TypeError("1 argument required, but only 0 present.");
 	var characterIndex = 0, i = 0;
 	start = Number(start);
 	if (isNaN(start) || start < 0) start = 0;
@@ -72,7 +72,7 @@ function substringByCharacter(start, end = Infinity) {
 	return this.substring(start, end);
 }
 function sliceByCharacter(start, end = Infinity) {
-	if (arguments < 1) throw new TypeError("1 argument required, but only 0 present.");
+	if (arguments.length < 1) throw new TypeError("1 argument required, but only 0 present.");
 	var characterIndex = 0, i = 0;
 	start = Number(start);
 	if (isNaN(start)) start = 0;
