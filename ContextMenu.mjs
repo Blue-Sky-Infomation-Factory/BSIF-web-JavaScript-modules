@@ -401,10 +401,11 @@ function measureMenu(style, width, height, anchor, { horizontal: forceHorizontal
 		pointPosition(style, width, height, x, y, true, true, forceHorizontal, forceVertical);
 	}
 }
-var context = null;
+var context = null, createMenuDisabled = false;
 function showMenu(list, anchor = null, options = null) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'showMenu': 1 argument required, but only 0 present.");
 	if (arguments.length > 1 && typeof anchor != "object") throw new TypeError("Failed to execute 'showMenu': Argument 'anchor' is not an object.");
+	if (createMenuDisabled) throw new Error("Failed to execute 'showMenu': Cannot create menu while a menu is closing.");
 	var onClose = null, darkStyle = false, keyboardMode = false, enforcePositioning, pureList = false;
 	if (arguments.length > 2) {
 		if (typeof options != "object" || !options) throw new TypeError("Failed to execute 'showMenu': Argument 'options' is not an object.");
@@ -619,11 +620,13 @@ function deposeMenu(event) {
 		context.resize = false;
 		return;
 	}
+	createMenuDisabled = true;
 	removeGlobalListener();
 	context.levels[0].element.remove();
 	const onClose = context.onClose;
-	if (onClose) queueMicrotask(onClose);
+	if (onClose) try { onClose() } catch (error) { console.error(error) };
 	context = null;
+	createMenuDisabled = false;
 }
 function closeMenu() { deposeMenu() }
 export { showMenu, closeMenu };
