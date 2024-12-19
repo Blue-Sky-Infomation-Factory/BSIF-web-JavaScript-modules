@@ -87,5 +87,14 @@ declare function showMenu(
 	anchor?: MouseEvent | ElementAnchor | Point,
 	options?: showMenuOptions
 ): void;
-export { showMenu };
+/** 关闭当前菜单 */
+declare function closeMenu(): void;
+/**
+ * 设置菜单字体
+ * @param name 字体名称
+ */
+declare function setFont(name: string): void;
+/** 获取当前菜单字体 */
+declare function getCurrentFont(): string;
+export { showMenu, closeMenu, setFont, getCurrentFont };
 export default showMenu;

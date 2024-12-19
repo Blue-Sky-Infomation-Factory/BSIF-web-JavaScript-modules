@@ -1,10 +1,15 @@
 import { EVENT_LISTENERS, OBJECT_PROPERTIES, parseAndGetNodes } from "./ArrayHTML.mjs";
-const font = "12px Arial",
-	drawContext = document.createElement("canvas").getContext("2d"),
+const drawContext = document.createElement("canvas").getContext("2d"),
 	resizeObserver = new ResizeObserver(deposeMenu),
 	horizontalParam = ["left", "right"],
 	verticalParam = ["top", "bottom"];
+var fontName = "Arial", font = "12px " + fontName;
 drawContext.font = font;
+function setFont(name) {
+	layer.style.fontFamily = drawContext.font = fontName = name;
+	font = "12px " + fontName;
+}
+function getCurrentFont() { return fontName }
 const { layer, shadow } = parseAndGetNodes([["div", [["#shadow", [
 	["style", [
 		`:host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none;font:${font}}`,
@@ -629,5 +634,5 @@ function deposeMenu(event) {
 	createMenuDisabled = false;
 }
 function closeMenu() { deposeMenu() }
-export { showMenu, closeMenu };
+export { showMenu, closeMenu, setFont, getCurrentFont };
 export default showMenu;
