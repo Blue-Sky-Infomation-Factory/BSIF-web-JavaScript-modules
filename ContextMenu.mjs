@@ -3,18 +3,14 @@ const drawContext = document.createElement("canvas").getContext("2d"),
 	resizeObserver = new ResizeObserver(deposeMenu),
 	horizontalParam = ["left", "right"],
 	verticalParam = ["top", "bottom"];
-var fontName = "Arial", font = "12px " + fontName;
-drawContext.font = font;
-function setFont(name) {
-	layer.style.fontFamily = drawContext.font = fontName = name;
-	font = "12px " + fontName;
-}
+var fontName = "Arial", font = drawContext.font = "12px " + fontName;
+function setFont(name) { drawContext.font = font = "12px " + (fontName = name) }
 function getCurrentFont() { return fontName }
 const { layer, shadow } = parseAndGetNodes([["div", [["#shadow", [
 	["style", [
-		`:host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none;font:${font}}`,
+		`:host{position:fixed;z-index:1610612736;left:0;top:0;width:100%;height:100%;pointer-events:none}`,
 		".context-menu-list{position:fixed;pointer-events:all;min-width:64px;max-width:min(384px, 100%);max-height:100%;overflow:hidden auto;box-sizing:border-box;border-radius:8px;border:solid 1px #DDD;padding:3px;background-color:#FFF;box-shadow:2px 2px 4px 0 #00000040;display:grid;gap:4px;outline:0;user-select:none;--item-text:#000;--item-highlight:#CDE;--item-active:#ABC;--weak:#888;color:var(--item-text)}",
-		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font-size:inherit;text-align:initial}",
+		".context-menu-item{grid-template-columns:28px auto 1fr 28px;grid-template-areas:\"icon text keys symbol\";gap:8px;border-radius:4px;border:0;padding:0;background-color:transparent;cursor:pointer;color:inherit;font:inherit;text-align:initial}",
 		".context-menu-item.pure{grid-template-columns:1fr;grid-template-areas:\"text\";padding-inline:8px}",
 		".context-menu-item>*{pointer-events:none}",
 		".context-menu-empty{opacity:0.5;place-content:center}",
@@ -40,7 +36,7 @@ function buildList(list, darkStyle) {
 	if (!length) {
 		return {
 			maxItemWidth: buildEmpty(temp) + 8,
-			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes.element,
+			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list", style: `font:${font}` }, "element"]]).nodes.element,
 			itemsHeight: 36,
 			itemsList: [],
 			callbacks,
@@ -90,7 +86,7 @@ function buildList(list, darkStyle) {
 		itemsHeight += 28
 		previousHr = true;
 	}
-	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes;
+	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list", style: `font:${font}` }, "element"]]).nodes;
 	return {
 		element,
 		maxItemWidth: maxItemWidth + 8,
@@ -106,7 +102,7 @@ function buildPureList(list, darkStyle) {
 	if (!length) {
 		return {
 			maxItemWidth: buildEmpty(temp) + 8,
-			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes.element,
+			element: parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list", style: `font:${font}` }, "element"]]).nodes.element,
 			itemsHeight: 36,
 			itemsList: [],
 			callbacks,
@@ -135,7 +131,7 @@ function buildPureList(list, darkStyle) {
 		if (itemWidth > maxItemWidth) maxItemWidth = itemWidth < 376 ? itemWidth : 376;
 		itemsHeight += 28
 	}
-	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list" }, "element"]]).nodes;
+	const { element, list: itemsList } = parseAndGetNodes([["div", temp, { class: darkStyle ? "context-menu-list dark" : "context-menu-list", style: `font:${font}` }, "element"]]).nodes;
 	return {
 		element,
 		maxItemWidth: maxItemWidth + 8,
