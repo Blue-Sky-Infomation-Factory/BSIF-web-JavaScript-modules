@@ -91,7 +91,7 @@ function buildList(list, darkStyle) {
 		element,
 		maxItemWidth: maxItemWidth + 8,
 		itemsHeight: itemsHeight + (length - 1) * 4 + 8,
-		itemsList,
+		itemsList: itemsList ?? [],
 		callbacks,
 		subLists
 	}
@@ -114,19 +114,22 @@ function buildPureList(list, darkStyle) {
 		if (!(item instanceof Object)) throw new TypeError("Failed to execute 'buildPureList': Elements of list must be objects.");
 		if (item.type != "item") throw new Error("Failed to execute 'buildPureList': Pure list can only has normal item.");
 		const properties = { class: "context-menu-item pure", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] },
-			text = item.text;
+			{ text, disabled } = item;
 		if (typeof text != "string") throw new TypeError("Failed to execute 'buildPureList': Property 'text' of item is not a string.");
-		let callback;
-		if ("onSelect" in item) {
-			const onSelect = item.onSelect;
-			if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildPureList': Property 'onSelect' of item is not a function.");
-			callback = { shortcut: false, callback: onSelect.bind(null, item.id) };
+		if (disabled) { properties.disabled = "" }
+		else {
+			let callback;
+			if ("onSelect" in item) {
+				const onSelect = item.onSelect;
+				if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildPureList': Property 'onSelect' of item is not a function.");
+				callback = { shortcut: false, callback: onSelect.bind(null, item.id) };
+			}
+			if (callback) {
+				properties["data-callback"] = callbacks.length;
+				callbacks.push(callback);
+			}
 		}
-		if (callback) {
-			properties["data-callback"] = callbacks.length;
-			callbacks.push(callback);
-		}
-		temp.push(["button", [["span", text, { class: "context-menu-item-text" }]], properties, "list", true]);
+		temp.push(["button", [["span", text, { class: "context-menu-item-text" }]], properties, disabled ? null : "list", true]);
 		const itemWidth = drawContext.measureText(text).actualBoundingBoxRight + 16;
 		if (itemWidth > maxItemWidth) maxItemWidth = itemWidth < 376 ? itemWidth : 376;
 		itemsHeight += 28
@@ -136,7 +139,7 @@ function buildPureList(list, darkStyle) {
 		element,
 		maxItemWidth: maxItemWidth + 8,
 		itemsHeight: itemsHeight + (length - 1) * 4 + 8,
-		itemsList,
+		itemsList: itemsList ?? [],
 		callbacks,
 		subLists
 	}
@@ -194,26 +197,29 @@ function buildIcon(data) {
 	}
 }
 function buildItem(data, temp, callbacks) {
-	const text = data.text;
+	const { text, disabled } = data;
 	if (typeof text != "string") throw new TypeError("Failed to execute 'buildItem': Property 'text' of item is not a string.");
 	var keysWidth = 0, keyText = null, callback;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] };
-	if ("onSelect" in data) {
-		let onSelect = data.onSelect;
-		if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onSelect' of item is not a function.");
-		onSelect = onSelect.bind(null, data.id);
-		if (callback) { callback.callback = onSelect } else callback = { shortcut: false, callback: onSelect };
-	}
-	if (callback) {
-		properties["data-callback"] = callbacks.length;
-		callbacks.push(callback);
+	if (disabled) { properties.disabled = "" }
+	else {
+		if ("onSelect" in data) {
+			let onSelect = data.onSelect;
+			if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onSelect' of item is not a function.");
+			onSelect = onSelect.bind(null, data.id);
+			if (callback) { callback.callback = onSelect } else callback = { shortcut: false, callback: onSelect };
+		}
+		if (callback) {
+			properties["data-callback"] = callbacks.length;
+			callbacks.push(callback);
+		}
 	}
 	temp.push(["button", [
 		"icon" in data ? buildIcon(data.icon) : null,
 		["span", text, { class: "context-menu-item-text" }],
 		keyText ? ["span", keyText, { class: "context-menu-item-keys" }] : null
-	], properties, "list", true]);
+	], properties, disabled ? null : "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
 function buildCheckItem(data, temp, callbacks) {
@@ -222,22 +228,26 @@ function buildCheckItem(data, temp, callbacks) {
 	var keysWidth = 0, keyText = null, callback;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] },
-		checked = Boolean(data.checked);
-	if ("onSelect" in data) {
-		let onSelect = data.onSelect;
-		if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onSelect' of item is not a function.");
-		onSelect = onSelect.bind(null, data.id, !checked);
-		if (callback) { callback.callback = onSelect } else callback = { shortcut: false, callback: onSelect };
-	}
-	if (callback) {
-		properties["data-callback"] = callbacks.length;
-		callbacks.push(callback);
+		checked = Boolean(data.checked),
+		disabled = data.disabled;
+	if (disabled) { properties.disabled = "" }
+	else {
+		if ("onSelect" in data) {
+			let onSelect = data.onSelect;
+			if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onSelect' of item is not a function.");
+			onSelect = onSelect.bind(null, data.id, !checked);
+			if (callback) { callback.callback = onSelect } else callback = { shortcut: false, callback: onSelect };
+		}
+		if (callback) {
+			properties["data-callback"] = callbacks.length;
+			callbacks.push(callback);
+		}
 	}
 	temp.push(["button", [
 		["input", null, { class: "context-menu-item-checkbox", type: "checkbox", [OBJECT_PROPERTIES]: { checked } }],
 		["span", text, { class: "context-menu-item-text" }],
 		keyText ? ["span", keyText, { class: "context-menu-item-keys" }] : null
-	], properties, "list", true]);
+	], properties, disabled ? null : "list", true]);
 	return drawContext.measureText(text).actualBoundingBoxRight + keysWidth + 80;
 }
 function buildSubList(data, temp, subLists) {

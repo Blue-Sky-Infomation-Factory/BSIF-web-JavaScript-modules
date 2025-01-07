@@ -26,16 +26,19 @@ type KeySet = {
 	shift?: boolean,
 	alt?: boolean
 }
+type selectableItem = {
+	keys?: KeySet,
+	disabled?: boolean
+};
 type MenuItem = {
 	type: "item",
 	onSelect?: (id: any) => any
-	keys?: KeySet
-} & IconItem;
+} & IconItem & selectableItem;
 type CheckItem = {
 	type: "check-item",
 	checked: boolean,
 	onSelect?: (id: any, toState: boolean) => any
-} & CommonItem;
+} & CommonItem & selectableItem;
 type ContainerItemTypes = MenuItem | CheckItem | SubList;
 type Group = {
 	type: "group",
