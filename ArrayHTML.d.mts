@@ -20,27 +20,29 @@ type ArrayHTMLElementNode = [
 		[OBJECT_PROPERTIES]?: object,
 		[key: string]: any
 	}?,
-	string?,
+	CaughtKey?,
 	boolean?
 ];
 type ArrayHTMLTextNode = [
 	"#comment" | "#text",
 	ArrayHTMLNodeContent?,
 	void?,
-	string?,
+	CaughtKey?,
 	boolean?
 ];
 type ArrayHTMLShadowRootNode = [
 	"#shadow",
 	ArrayHTMLCollection | ArrayHTMLNodeContent | Node | void,
 	ShadowRootInit,
-	string?
+	CaughtKey?,
+	boolean?
 ];
 type ArrayHTMLNodeContent = string | boolean | number | bigint;
 type ArrayHTMLCollectionContent = ArrayHTMLElementNode | ArrayHTMLTextNode | string | ArrayHTMLNodeContent | Node;
 type ArrayHTMLCollection = ArrayHTMLCollectionContent[];
 type CaughtNode = HTMLElementTagNameMap[keyof HTMLElementTagNameMap] | Comment | Text | ShadowRoot;
 type CaughtNodes = { [key: string]: CaughtNode | CaughtNode[] };
+type CaughtKey = string | symbol;
 declare function serialize(node: Node, onlyChildren?: boolean): ArrayHTMLCollection;
 declare function parse(ArrayHTML: ArrayHTMLCollection): DocumentFragment;
 declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection): {

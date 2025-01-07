@@ -89,14 +89,16 @@ function parseNode(data, outer, collector) {
 		}
 	}
 	if ("3" in data && collector) {
-		const name = data[3];
-		if (data[4]) {
-			const array = Object.hasOwn(collector, name) ? collector[name] : collector[name] = [];
-			if (!Array.isArray(array)) throw new Error(`Name '${name}' is specified as both array and single node.`);
-			array.push(node);
-		} else {
-			if (Object.hasOwn(collector, name)) throw new Error(`Name '${name}' got multi node but was not specified as an array.`);
-			collector[name] = node;
+		const key = data[3], type = typeof key;
+		if (type == "string" || type == "symbol") {
+			if (data[4]) {
+				const array = Object.hasOwn(collector, key) ? collector[key] : collector[key] = [];
+				if (!Array.isArray(array)) throw new Error(`Key '${key}' is specified as both array and single node.`);
+				array.push(node);
+			} else {
+				if (Object.hasOwn(collector, key)) throw new Error(`Key '${key}' got multi node but was not specified as an array.`);
+				collector[key] = node;
+			}
 		}
 	}
 }
