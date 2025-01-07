@@ -79,13 +79,13 @@ function parseNode(data, outer, collector) {
 			break;
 		default: {
 			outer.appendChild(node = document.createElement(data[0]));
-			const attributes = data[2]
+			parseContent(node, content, collector);
+			const attributes = data[2];
 			if (attributes instanceof Object) {
 				for (const attribute in attributes) try { parseAttribute(node, attribute, attributes[attribute]) } catch (error) { console.warn("Parse error: Failed to set attribute", attribute, "to", attributes[attribute], "on", node, `\n${error.name}: ${error.message}`) };
 				if (EVENT_LISTENERS in attributes) for (const item of attributes[EVENT_LISTENERS]) node.addEventListener(...item);
 				if (OBJECT_PROPERTIES in attributes) Object.assign(node, attributes[OBJECT_PROPERTIES]);
 			}
-			parseContent(node, content, collector);
 		}
 	}
 	if ("3" in data && collector) {
