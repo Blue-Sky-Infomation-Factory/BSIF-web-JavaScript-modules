@@ -121,10 +121,10 @@ function buildPureList(list, darkStyle) {
 			text = item.text;
 		if (typeof text != "string") throw new TypeError("Failed to execute 'buildPureList': Property 'text' of item is not a string.");
 		let callback;
-		if ("onselect" in item) {
-			const onselect = item.onselect;
-			if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildPureList': Property 'onselect' of item is not a function.");
-			callback = { shortcut: false, callback: onselect.bind(null, item.id) };
+		if ("onSelect" in item) {
+			const onSelect = item.onSelect;
+			if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildPureList': Property 'onSelect' of item is not a function.");
+			callback = { shortcut: false, callback: onSelect.bind(null, item.id) };
 		}
 		if (callback) {
 			properties["data-callback"] = callbacks.length;
@@ -203,11 +203,11 @@ function buildItem(data, temp, callbacks) {
 	var keysWidth = 0, keyText = null, callback;
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] };
-	if ("onselect" in data) {
-		let onselect = data.onselect;
-		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onselect' of item is not a function.");
-		onselect = onselect.bind(null, data.id);
-		if (callback) { callback.callback = onselect } else callback = { shortcut: false, callback: onselect };
+	if ("onSelect" in data) {
+		let onSelect = data.onSelect;
+		if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildItem': Property 'onSelect' of item is not a function.");
+		onSelect = onSelect.bind(null, data.id);
+		if (callback) { callback.callback = onSelect } else callback = { shortcut: false, callback: onSelect };
 	}
 	if (callback) {
 		properties["data-callback"] = callbacks.length;
@@ -227,11 +227,11 @@ function buildCheckItem(data, temp, callbacks) {
 	if ("keys" in data) keysWidth = drawContext.measureText(keyText = buildKeys(data.keys, callback = { shortcut: true })).actualBoundingBoxRight;
 	const properties = { class: "context-menu-item", [EVENT_LISTENERS]: [["pointerenter", itemMouseInEvent], ["pointerleave", itemMouseOutEvent]] },
 		checked = Boolean(data.checked);
-	if ("onselect" in data) {
-		let onselect = data.onselect;
-		if (typeof onselect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onselect' of item is not a function.");
-		onselect = onselect.bind(null, data.id, !checked);
-		if (callback) { callback.callback = onselect } else callback = { shortcut: false, callback: onselect };
+	if ("onSelect" in data) {
+		let onSelect = data.onSelect;
+		if (typeof onSelect != "function") throw new TypeError("Failed to execute 'buildCheckItem': Property 'onSelect' of item is not a function.");
+		onSelect = onSelect.bind(null, data.id, !checked);
+		if (callback) { callback.callback = onSelect } else callback = { shortcut: false, callback: onSelect };
 	}
 	if (callback) {
 		properties["data-callback"] = callbacks.length;

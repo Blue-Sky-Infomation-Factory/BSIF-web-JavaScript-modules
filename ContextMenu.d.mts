@@ -28,13 +28,13 @@ type KeySet = {
 }
 type MenuItem = {
 	type: "item",
-	onselect?: (id: any) => any
+	onSelect?: (id: any) => any
 	keys?: KeySet
 } & IconItem;
 type CheckItem = {
 	type: "check-item",
 	checked: boolean,
-	onselect?: (id: any, toState: boolean) => any
+	onSelect?: (id: any, toState: boolean) => any
 } & CommonItem;
 type ContainerItemTypes = MenuItem | CheckItem | SubList;
 type Group = {
