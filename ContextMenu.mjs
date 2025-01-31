@@ -435,7 +435,7 @@ function showMenu(list, anchor = null, options = null) {
 	deposeMenu();
 	const topLevel = pureList ? buildPureList(list, darkStyle = Boolean(darkStyle)) : buildList(list, darkStyle = Boolean(darkStyle)),
 		element = topLevel.element, route = new WeakMap;
-	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose, resize: true };
+	context = { levels: [topLevel], route, currentLevel: 0, focus: null, darkStyle, onClose, resize: true, selected: false };
 	route.set(element, topLevel);
 	measureMenu(element.style, topLevel.maxItemWidth, topLevel.itemsHeight, anchor, enforcePositioning ?? { horizontal: false, vertical: false });
 	delete topLevel.maxItemWidth;
@@ -500,6 +500,7 @@ function itemClickEvent(event) {
 		}
 	} else {
 		const callback = context.route.get(target.parentElement).callbacks[target.dataset.callback]?.callback;
+		context.selected = true;
 		deposeMenu();
 		if (callback) callback();
 	}
@@ -557,6 +558,7 @@ function keyboardEvent(event) {
 		const callback = item.callback;
 		if (item.shortcut && callback && item.ctrl == ctrlKey && item.alt == altKey && item.shift == shiftKey && item.key == key.toLowerCase()) {
 			event.preventDefault();
+			context.selected = true;
 			deposeMenu();
 			callback();
 			return;
@@ -635,7 +637,7 @@ function deposeMenu(event) {
 	removeGlobalListener();
 	context.levels[0].element.remove();
 	const onClose = context.onClose;
-	if (onClose) try { onClose() } catch (error) { console.error(error) };
+	if (onClose) try { onClose(context.selected) } catch (error) { console.error(error) };
 	context = null;
 	createMenuDisabled = false;
 }

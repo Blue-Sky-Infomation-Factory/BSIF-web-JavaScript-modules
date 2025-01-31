@@ -64,7 +64,7 @@ type ElementVerticalAnchor = {
 };
 type showMenuOptions = {
 	/** 菜单被关闭时的回调 */
-	onClose?: () => any,
+	onClose?: (selected: boolean) => any,
 	/** 是否使用暗黑风格，默认 false 否 */
 	darkStyle?: boolean,
 	/** 显示菜单后进入键盘操作模式，默认 false 否 */
