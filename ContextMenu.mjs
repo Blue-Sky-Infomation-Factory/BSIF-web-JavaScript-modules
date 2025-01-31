@@ -611,7 +611,10 @@ function keyboardEvent(event) {
 		default:
 			preventDefault = false;
 	}
-	if (preventDefault) event.preventDefault();
+	if (preventDefault) {
+		event.stopImmediatePropagation();
+		event.preventDefault();
+	}
 }
 function addGlobalListener() {
 	window.addEventListener("blur", deposeMenu);
