@@ -13,7 +13,7 @@ class DynamicIndexedDatabase {
 	static async open(name) {
 		if (arguments.length < 1) throw new TypeError("Failed to execute 'open': 1 argument required, but only 0 present.");
 		if (typeof name != "string") throw new TypeError("Failed to execute 'open': Argument 'name' is not a string.");
-		const db=await IndexedDatabase.open(name),pool = this.#pool, cache=pool.get(db);
+		const db = await IndexedDatabase.open(name), pool = this.#pool, cache = pool.get(db);
 		if (cache) return cache;
 		DynamicIndexedDatabase.#rejectConstruct = false;
 		const instance = new DynamicIndexedDatabase(db);
@@ -34,13 +34,13 @@ class DynamicIndexedDatabase {
 	async #process() {
 		if (this.#processing) return;
 		this.#processing = true;
-		const database = this.#db,queue = this.#queue;
+		const database = this.#db, queue = this.#queue;
 		while (queue.length) {
 			const { name, configure, adapter: { resolve, reject } } = queue.shift();
 			try {
-				if (!database.objectStoreNames.contains(name)) await database.restart(Date.now(), configure);
+				if (!database.objectStoreNames.contains(name)) await database.restart(database.version + 1, configure);
 				resolve(database.getObjectStore(name));
-			} catch(e) {reject(e)}
+			} catch (e) { reject(e) }
 		}
 		this.#processing = false;
 	}
