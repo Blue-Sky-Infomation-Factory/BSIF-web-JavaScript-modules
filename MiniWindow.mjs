@@ -1,5 +1,5 @@
 import { parse, parseAndGetNodes, EVENT_LISTENERS } from "./array_HTML.mjs";
-import "./Promise.withResolvers.mjs";
+
 const { layer, windowBody, windowTitle, windowQueue, windowClose, windowContent, contentFrame, subLayer, subTitle, subFrame, subBody } = parseAndGetNodes([
 	["div", [
 		["style", [
