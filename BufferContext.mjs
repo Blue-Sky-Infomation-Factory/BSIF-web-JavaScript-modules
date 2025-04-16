@@ -1,4 +1,4 @@
-import { TypedArray } from "./BinaryOperate.mjs";
+import { TypedArray } from "./binary_operate.mjs";
 class BufferContext {
 	#current;
 	get current() { return this.#current }

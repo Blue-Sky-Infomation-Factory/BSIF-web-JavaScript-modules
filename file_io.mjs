@@ -1,4 +1,4 @@
-import { TypedArray } from "./BinaryOperate.mjs";
+import { TypedArray } from "./binary_operate.mjs";
 const readableTypes = Object.freeze({ TEXT: 0, DATA_URL: 1, ARRAY_BUFFER: 2 }), readFunctions = [
 	FileReader.prototype.readAsText,
 	FileReader.prototype.readAsDataURL,

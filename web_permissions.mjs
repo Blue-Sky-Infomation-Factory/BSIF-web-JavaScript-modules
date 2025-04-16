@@ -1,5 +1,5 @@
 import MiniWindow from "./MiniWindow.mjs";
-import { parse as parseAH, parseAndGetNodes } from "./ArrayHTML.mjs";
+import { parse as parseAH, parseAndGetNodes } from "./array_HTML.mjs";
 import { LocalStorageObject } from "./LocalStorageObject.mjs";
 const style = parseAndGetNodes([["style", "#bs-requestPermission-title{font-size:1.2rem}#bs-requestPermission-frame{display:grid;gap:0.5rem}#bs-requestPermission-hint{font-weight:bold}", null, "style"]]).nodes.style;
 const permissions = {

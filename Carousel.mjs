@@ -1,4 +1,4 @@
-import { EVENT_LISTENERS, parseAndGetNodes } from "./ArrayHTML.mjs";
+import { EVENT_LISTENERS, parseAndGetNodes } from "./array_HTML.mjs";
 document.head.appendChild(parseAndGetNodes([["style", [
 	".bs-carousel-box{box-sizing:border-box;width:100%;height:100%;border:1px solid black;position:relative;border-radius:1rem;background-color:black;overflow:hidden;transition:none 0.4s ease-in-out}",
 	".bs-carousel-scroll,.bs-carousel-item{width:100%;height:100%}",

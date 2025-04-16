@@ -1,4 +1,4 @@
-import { EVENT_LISTENERS, OBJECT_PROPERTIES, parseAndGetNodes } from "./ArrayHTML.mjs";
+import { EVENT_LISTENERS, OBJECT_PROPERTIES, parseAndGetNodes } from "./array_HTML.mjs";
 const drawContext = document.createElement("canvas").getContext("2d"),
 	resizeObserver = new ResizeObserver(deposeMenu),
 	horizontalParam = ["left", "right"],

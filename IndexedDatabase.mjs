@@ -1,4 +1,4 @@
-import "./PromiseWithResolvers.mjs";
+import "./Promise.withResolvers.mjs";
 
 const protectedField = {
 	rejectIndexedDatabase: true,

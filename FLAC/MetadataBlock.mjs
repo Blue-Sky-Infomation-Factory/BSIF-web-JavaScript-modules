@@ -1,6 +1,6 @@
-import { splitBytes, littleEndianToUint, bigEndianToUint, uintToLittleEndian, uintToBigEndian, TypedArray } from "../BinaryOperate.mjs";
+import { splitBytes, littleEndianToUint, bigEndianToUint, uintToLittleEndian, uintToBigEndian, TypedArray } from "../binary_operate.mjs";
 import Enum from "../Enum.mjs";
-import { decodeString, encodeString } from "../UTF-8.mjs";
+import { decodeString, encodeString } from "../utf-8.mjs";
 import BufferContext from "../BufferContext.mjs";
 const metadataBlockTypes = new Enum(["STREAMINFO", "PADDING", "APPLICATION", "SEEKTABLE", "VORBIS_COMMENT", "CUESHEET", "PICTURE"]);
 const typeOfUint8Array = Uint8Array.prototype,

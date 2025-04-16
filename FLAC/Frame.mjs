@@ -1,5 +1,5 @@
-import { decode as decodeValue } from "../UTF-8.mjs";
-import { bigEndianToUint, splitBytes } from "../BinaryOperate.mjs";
+import { decode as decodeValue } from "../utf-8.mjs";
+import { bigEndianToUint, splitBytes } from "../binary_operate.mjs";
 import Enum from "../Enum.mjs";
 const { defineProperty, defineProperties, freeze } = Object;
 function readBits(context, bits) {

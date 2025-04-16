@@ -1,5 +1,5 @@
 import IndexedDatabase from "./IndexedDatabase.mjs";
-import "./PromiseWithResolvers.mjs";
+import "./Promise.withResolvers.mjs";
 class DynamicIndexedDatabase {
 	static #checkInstance(instance) { if (!(instance instanceof this)) throw new TypeError("Illegal invocation") }
 	#db;

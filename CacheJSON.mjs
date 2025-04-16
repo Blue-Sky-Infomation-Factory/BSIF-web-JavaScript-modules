@@ -1,4 +1,4 @@
-import { promiseGet } from "./AJAX.mjs";
+import { promiseGet } from "./ajax.mjs";
 class CacheJSON {
 	#address;
 	#loaded = false;

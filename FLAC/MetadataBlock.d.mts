@@ -1,4 +1,4 @@
-import { TypedArray } from "../BinaryOperate.mjs";
+import { TypedArray } from "../binary_operate.mjs";
 import BufferContext from "../BufferContext.mjs";
 const enum metadataBlockTypes { STREAMINFO, PADDING, APPLICATION, SEEKTABLE, VORBIS_COMMENT, CUESHEET, PICTURE, RESERVED }
 declare class MetadataBlock {

@@ -1,4 +1,4 @@
-import { TypedArray } from "./BinaryOperate.mjs";
+import { TypedArray } from "./binary_operate.mjs";
 type saveTypes = TypedArray | ArrayBuffer | Blob | DataView | string;
 const enum readableTypes { TEXT, DATA_URL, ARRAY_BUFFER };
 declare function read(file: Blob, readType: readableTypes.TEXT | readableTypes.DATA_URL): Promise<string>;

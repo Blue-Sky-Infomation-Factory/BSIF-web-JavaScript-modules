@@ -1,4 +1,4 @@
-import { TypedArray } from "./BinaryOperate.mjs";
+import { TypedArray } from "./binary_operate.mjs";
 declare class BufferContext<TA extends TypedArray> {
 	readonly array: TA;
 	current: number;
