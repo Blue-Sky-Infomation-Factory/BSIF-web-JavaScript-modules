@@ -26,7 +26,7 @@ function attributeReplacer(character) { return attributeEscapeMapping[character]
  * @type {{CONTENT:0, PRE_WRAP_CONTENT:1, ATTRIBUTE:2}}
  */
 // @ts-ignore
-const TYPE = new Enum(["CONTENT", "PRE_WRAP_CONTENT", "ATTRIBUTE"]);
+const TYPE = Enum.fromKeys(["CONTENT", "PRE_WRAP_CONTENT", "ATTRIBUTE"]);
 
 /**
  * @param {string} string

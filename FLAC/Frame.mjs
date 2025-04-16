@@ -112,7 +112,7 @@ function getChannels(code) {
 		default: throw new Error("Invalid/not supported channels code.");
 	}
 }
-const subFrameTypes = new Enum(["CONSTANT", "VERBATIM", "FIXED", "LPC"]);
+const subFrameTypes = Enum.fromKeys(["CONSTANT", "VERBATIM", "FIXED", "LPC"]);
 class SubFrame {
 	constructor(wastedBits) { defineProperty(this, "wastedBits", { value: wastedBits, enumerable: true }) }
 	get typeName() { return Enum.keyOf(subFrameTypes, this.type) }

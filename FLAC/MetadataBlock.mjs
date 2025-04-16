@@ -2,7 +2,7 @@ import { splitBytes, littleEndianToUint, bigEndianToUint, uintToLittleEndian, ui
 import Enum from "../Enum.mjs";
 import { decodeString, encodeString } from "../utf-8.mjs";
 import BufferContext from "../BufferContext.mjs";
-const metadataBlockTypes = new Enum(["STREAMINFO", "PADDING", "APPLICATION", "SEEKTABLE", "VORBIS_COMMENT", "CUESHEET", "PICTURE"]);
+const metadataBlockTypes = Enum.fromKeys(["STREAMINFO", "PADDING", "APPLICATION", "SEEKTABLE", "VORBIS_COMMENT", "CUESHEET", "PICTURE"]);
 const typeOfUint8Array = Uint8Array.prototype,
 	typeOfBufferContext = BufferContext.prototype,
 	typeOfTypedArray = TypedArray.prototype,
