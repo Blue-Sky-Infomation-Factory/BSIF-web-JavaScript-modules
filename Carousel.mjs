@@ -1,5 +1,5 @@
-import { EVENT_LISTENERS, parseAndGetNodes } from "./array_HTML.mjs";
-document.head.appendChild(parseAndGetNodes([["style", [
+import { EVENT_LISTENERS, parse, parseAndGetNodes } from "./array_HTML.mjs";
+document.head.appendChild(parse([["style", [
 	".bs-carousel-box{box-sizing:border-box;width:100%;height:100%;border:1px solid black;position:relative;border-radius:1rem;background-color:black;overflow:hidden;transition:none 0.4s ease-in-out}",
 	".bs-carousel-scroll,.bs-carousel-item{width:100%;height:100%}",
 	".bs-carousel-scroll{left:0;position:absolute;top:0;display:grid;grid-auto-flow:column;grid-auto-columns:100%;transition-property:left;transition-duration:inherit;transition-timing-function:inherit;z-index:1}",
@@ -28,7 +28,7 @@ function buildItem(data) {
 	const temp = [];
 	if ("image" in data) temp.push(["div", null, { class: "bs-carousel-item-image", style: `background-image:url("${data.image}")` }]);
 	if ("text" in data) temp.push(["div", data.text, { class: "bs-carousel-item-text", title: data.text }]);
-	const item = ["div", temp, { class: "bs-carousel-item" }, "item"], action = data.action, attribute = item[2];
+	const item = ["div", temp, { class: "bs-carousel-item" }, "item", true], action = data.action, attribute = item[2];
 	switch (typeof action) {
 		case "function":
 			attribute.class += " action";
@@ -121,7 +121,7 @@ class Carousel {
 		}, "box"]]).nodes;
 		const box = this.#box = nodes.box;
 		if (number < 2) {
-			box.className += "single";
+			box.classList.add("single");
 			return;
 		}
 		this.#float = nodes.float.style;
