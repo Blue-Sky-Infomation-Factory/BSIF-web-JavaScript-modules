@@ -44,27 +44,39 @@ class SendFailedError extends Error {
 }
 
 async function parseDocument(response, abortSignal) {
-	const text = response.text();
-	let contentType = response.headers.get("Content-Type");
-	const split = contentType.indexOf(";");
-	if (split != -1) contentType = contentType.substring(0, split);
+	const text = await response.text();
 	abortSignal.throwIfAborted();
+	const contentType = response.headers.get("Content-Type"),
+		split = contentType.indexOf(";");
 	// @ts-ignore
-	return new DOMParser().parseFromString(await text, contentType);
+	return new DOMParser().parseFromString(text, split == -1 ? contentType : contentType.substring(0, split));
+}
+
+async function parseFragment(response, abortSignal) {
+	const text = await response.text();
+	abortSignal.throwIfAborted();
+	return document.createRange().createContextualFragment(text);
 }
 
 /**
  * @typedef {{abort(...args: any[]): void}} Abortable
  * @typedef {string[][] | Record<string, string> | string | URLSearchParams} URLSearchParamsInit
  * @typedef {string | URL} URLInit
- * @typedef {Readonly<{SOURCE: 0, JSON: 1, TEXT: 2, BLOB: 3, BUFFER: 4, STREAM: 5, DOCUMENT: 6}>} enum_ParseType
+ * @typedef {Readonly<{SOURCE: 0, JSON: 1, TEXT: 2, BLOB: 3, BUFFER: 4, STREAM: 5, DOCUMENT: 6, DOCUMENT_FRAGMENT: 7}>} enum_ParseType
+ * @typedef {Readonly<{DOCUMENT: 0, FRAGMENT: 1}>} enum_ContextType
  */
 /**
  * @type {enum_ParseType}
  * @enum {enum_ParseType[keyof enum_ParseType]}
  */
 // @ts-ignore
-const ParseType = Enum.fromKeys(["SOURCE", "JSON", "TEXT", "BLOB", "BUFFER", "STREAM", "DOCUMENT"]);
+const ParseType = Enum.fromKeys(["SOURCE", "JSON", "TEXT", "BLOB", "BUFFER", "STREAM", "DOCUMENT", "DOCUMENT_FRAGMENT"]),
+	/**
+	 * @type {enum_ContextType}
+	 * @enum {enum_ContextType[keyof enum_ContextType]}
+	 */
+	// @ts-ignore
+	ContextType = Enum.fromKeys(["DOCUMENT", "FRAGMENT"]);
 
 class RequestController {
 	#abortController = new AbortController;
@@ -99,7 +111,7 @@ class RequestController {
 		if (!(typeof url == "string" || url instanceof URL)) throw new TypeError("The URL was not provided or is invalid.");
 		url = new URL(url, location.href);
 		const temp = Object.assign({}, options);
-		if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Unsupported parse type.");
+		if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Invalid parse type.");
 		var signal = this.#abortController.signal;
 		if (timeout !== null) {
 			timeout = Number(timeout);
@@ -143,6 +155,7 @@ class RequestController {
 			case ParseType.BUFFER: return this.#finish(response.arrayBuffer(), abortSignal);
 			case ParseType.STREAM: return this.#finish(response.body, abortSignal);
 			case ParseType.DOCUMENT: return this.#finish(parseDocument(response, abortSignal), abortSignal);
+			case ParseType.DOCUMENT_FRAGMENT: return this.#finish(parseFragment(response, abortSignal), abortSignal);
 		}
 	}
 	/**
@@ -183,7 +196,7 @@ function get(url, urlParams = null, parseType = ParseType.SOURCE, headers = null
 		const originalParams = url.searchParams;
 		for (const [key, value] of urlParams) originalParams.append(key, value);
 	}
-	if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Unsupported parse type.");
+	if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Invalid parse type.");
 	headers = new Headers(headers ?? undefined);
 	if (!allowCache) headers.set("Cache-Control", "no-store");
 	return new RequestController(url, { headers }, parseType, timeout);
@@ -208,7 +221,7 @@ function post(url, body = null, parseType = ParseType.SOURCE, headers = null, ur
 		const originalParams = url.searchParams;
 		for (const [key, value] of urlParams) originalParams.append(key, value);
 	}
-	if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Unsupported parse type.");
+	if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Invalid parse type.");
 	headers = new Headers(headers ?? undefined);
 	if (!allowCache) headers.set("Cache-Control", "no-store");
 	return new RequestController(url, { method: "POST", headers, body }, parseType, timeout);
@@ -265,15 +278,23 @@ class LoadRequestController extends RequestController {
 			}
 		}
 	];
+	static ContextType = ContextType;
 	/** @type {Abortable[]} */
 	#subRequests = null;
 	#finished = false;
 	get finished() { return this.#finished }
 	#result;
 	get result() { return this.#result }
-	constructor(url, allowCache) {
+	/**
+	 * 创建一个新的文档获取实例
+	 * @param {string} url 要获取的文档URL
+	 * @param {boolean} allowCache 是否允许缓存文档资源
+	 * @param {ContextType} contextType 文档上下文类型
+	 */
+	constructor(url, allowCache, contextType = ContextType.DOCUMENT) {
+		if (!Enum.isValueOf(ContextType, contextType)) throw new TypeError("Invalid context type.");
 		allowCache = Boolean(allowCache);
-		super(url, allowCache ? undefined : { headers: { "Cache-Control": "no-store" } }, ParseType.DOCUMENT);
+		super(url, allowCache ? undefined : { headers: { "Cache-Control": "no-store" } }, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT);
 		this.#result = this.#fetch(allowCache);
 	}
 	abort(reason) {
@@ -316,10 +337,10 @@ class LoadRequestController extends RequestController {
 			value: this.name,
 			configurable: true
 		});
-		Object.defineProperty(this, "resourceTypes", {
-			writable: false,
-			configurable: false,
-			enumerable: true
+		const readonlyConfig = { writable: false, configurable: false, enumerable: true };
+		Object.defineProperties(this, {
+			"resourceTypes": readonlyConfig,
+			"ContextType": readonlyConfig
 		});
 	}
 }
@@ -329,10 +350,14 @@ class LoadRequestController extends RequestController {
  * @param {string} url 要加载的文档URL
  * @param {boolean} preloadResources 是否预载相关资源
  * @param {boolean} allowCache 是否允许使用缓存
+ * @param {ContextType} contextType 上下文类型
  * @returns 文档请求控制器对象
  */
-function loadDocument(url, preloadResources = true, allowCache = true) {
-	return preloadResources ? new LoadRequestController(url, allowCache) : get(url, undefined, ParseType.DOCUMENT, undefined, allowCache);
+function loadDocument(url, preloadResources = true, allowCache = true, contextType = ContextType.DOCUMENT) {
+	if (!Enum.isValueOf(ContextType, contextType)) throw new TypeError("Invalid context type.");
+	return preloadResources ?
+		new LoadRequestController(url, allowCache, contextType) :
+		get(url, undefined, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, undefined, allowCache);
 }
 
-export { get, post, loadDocument, ParseType, AbortError, NotOkError, SendFailedError, RequestController, LoadRequestController };
+export { get, post, loadDocument, ParseType, ContextType, AbortError, NotOkError, SendFailedError, RequestController, LoadRequestController };
