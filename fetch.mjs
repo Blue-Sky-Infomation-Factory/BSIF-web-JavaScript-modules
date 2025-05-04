@@ -181,20 +181,20 @@ class RequestController {
 /**
  * 构建 GET 请求
  * @param {URLInit} url 请求的 URL
- * @param {URLSearchParamsInit} urlParams URL 查询参数
+ * @param {URLSearchParamsInit} searchParams URL 查询参数
  * @param {ParseType} parseType 解析类型
  * @param {HeadersInit} headers 请求头
  * @param {boolean} allowCache 是否允许缓存
  * @param {number} timeout 超时时间
  * @returns 返回请求控制器实例
  */
-function get(url, urlParams = null, parseType = ParseType.SOURCE, headers = null, allowCache = true, timeout = null) {
+function get(url, searchParams = null, parseType = ParseType.SOURCE, headers = null, allowCache = true, timeout = null) {
 	if (!(typeof url == "string" || url instanceof URL)) throw new TypeError("The URL was not provided or is invalid.");
 	url = new URL(url, location.href);
-	if (urlParams) {
-		if (!(urlParams instanceof URLSearchParams)) urlParams = new URLSearchParams(urlParams);
+	if (searchParams) {
+		if (!(searchParams instanceof URLSearchParams)) searchParams = new URLSearchParams(searchParams);
 		const originalParams = url.searchParams;
-		for (const [key, value] of urlParams) originalParams.append(key, value);
+		for (const [key, value] of searchParams) originalParams.append(key, value);
 	}
 	if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Invalid parse type.");
 	headers = new Headers(headers ?? undefined);
@@ -208,22 +208,20 @@ function get(url, urlParams = null, parseType = ParseType.SOURCE, headers = null
  * @param {BodyInit} body 请求体
  * @param {ParseType} parseType 解析类型
  * @param {HeadersInit} headers 请求头
- * @param {URLSearchParamsInit} urlParams URL查询参数
- * @param {boolean} allowCache 是否允许缓存，默认不允许
+ * @param {URLSearchParamsInit} searchParams URL 查询参数
  * @param {number} timeout 超时时间
  * @returns 返回请求控制器实例
  */
-function post(url, body = null, parseType = ParseType.SOURCE, headers = null, urlParams = null, allowCache = false, timeout = null) {
+function post(url, body = null, parseType = ParseType.SOURCE, headers = null, searchParams = null, timeout = null) {
 	if (!(typeof url == "string" || url instanceof URL)) throw new TypeError("The URL was not provided or is invalid.");
 	url = new URL(url, location.href);
-	if (urlParams) {
-		if (!(urlParams instanceof URLSearchParams)) urlParams = new URLSearchParams(urlParams);
+	if (searchParams) {
+		if (!(searchParams instanceof URLSearchParams)) searchParams = new URLSearchParams(searchParams);
 		const originalParams = url.searchParams;
-		for (const [key, value] of urlParams) originalParams.append(key, value);
+		for (const [key, value] of searchParams) originalParams.append(key, value);
 	}
 	if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Invalid parse type.");
 	headers = new Headers(headers ?? undefined);
-	if (!allowCache) headers.set("Cache-Control", "no-store");
 	return new RequestController(url, { method: "POST", headers, body }, parseType, timeout);
 }
 
@@ -248,7 +246,7 @@ class LoadRequestController extends RequestController {
 					abortController.signal.addEventListener("abort", reject);
 					return { request: abortController, mission: Promise.race([promise, import(element.src)]) };
 				} else {
-					const request = get(element.src, undefined, ParseType.TEXT, undefined, allowCache);
+					const request = get(element.src, null, ParseType.TEXT, null, allowCache);
 					return { request, mission: this.load(request.result, element) };
 				}
 			},
@@ -265,7 +263,7 @@ class LoadRequestController extends RequestController {
 			selector: "link[rel=stylesheet]",
 			/** @param {HTMLLinkElement} element  */
 			process(element, allowCache) {
-				const request = get(element.href, undefined, ParseType.TEXT, undefined, allowCache);
+				const request = get(element.href, null, ParseType.TEXT, null, allowCache);
 				return { request, mission: this.load(request.result, element) };
 			},
 			async load(result, element) {
@@ -357,7 +355,7 @@ function loadDocument(url, preloadResources = true, allowCache = true, contextTy
 	if (!Enum.isValueOf(ContextType, contextType)) throw new TypeError("Invalid context type.");
 	return preloadResources ?
 		new LoadRequestController(url, allowCache, contextType) :
-		get(url, undefined, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, undefined, allowCache);
+		get(url, null, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, null, allowCache);
 }
 
 export { get, post, loadDocument, ParseType, ContextType, AbortError, NotOkError, SendFailedError, RequestController, LoadRequestController };
