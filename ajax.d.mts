@@ -69,14 +69,6 @@ declare function ajax(options: ajaxMethodOptions): XMLHttpRequest;
  */
 declare function get(url: AJAXOptions["url"], success: responseCallback, responseType: XMLHttpRequestResponseType = "text", allowCache = true, fail?: failedCallback): XMLHttpRequest;
 /**
- * 以 GET 方式发送请求，并以指定形式获取回复，回复被封装在 Promise 中。此方法的底层是 Fetch API，本方法不提供手动终止请求的手段。
- * @param url 请求 URL
- * @param responseType 要将请求的响应解析为什么类型的数据
- * @param allowCache 是否允许使用浏览器缓存
- * @returns 响应的内容
- */
-declare function promiseGet(url: AJAXOptions["url"], responseType: XMLHttpRequestResponseType = "text", allowCache = true): Promise<any>;
-/**
  * 请求一个 HTML 文档，解析为 DOM 并预载其中的某些资源
  * @param url 请求 URL
  * @param targetElement 请求完成后要将文档载入到哪个元素
@@ -99,4 +91,4 @@ declare function load(
  * @param options 选项
  */
 declare function buildRequest(request: LoadRequest | XMLHttpRequest, options: AJAXOptions): void;
-export { ajax, get, promiseGet, load, buildRequest, LoadRequest }
+export { ajax, get, load, buildRequest, LoadRequest }
