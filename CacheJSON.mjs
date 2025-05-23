@@ -1,4 +1,4 @@
-import { promiseGet } from "./ajax.mjs";
+import { get, ParseType } from "./fetch.mjs";
 class CacheJSON {
 	#address;
 	#loaded = false;
@@ -27,7 +27,7 @@ class CacheJSON {
 	async #fetch() {
 		this.#fetching = true;
 		try {
-			this.#data = await promiseGet(this.#address, "json", false);
+			this.#data = await get(this.#address, null, ParseType.JSON, null, false).result;
 			this.#lastFetch = Date.now();
 			this.#loaded = true;
 		} catch (none) { this.#loaded = false } finally {
