@@ -1,8 +1,10 @@
 import Enum from "./Enum.mjs";
 
 class NotOkError extends Error {
+	name = this.constructor.name;
+	/** @param {number} statusCode */
 	constructor(statusCode) {
-		super(`Request failed with status code ${statusCode}.`);
+		super(`The request failed with status code ${statusCode}.`);
 		this.statusCode = statusCode;
 	}
 	static {
@@ -13,7 +15,12 @@ class NotOkError extends Error {
 	}
 }
 class AbortError extends Error {
-	constructor(reason) { super(reason) }
+	name = this.constructor.name;
+	/** @param {any} reason */
+	constructor(reason) {
+		super("The request aborted due to the abort() method being called.");
+		this.reason = reason;
+	}
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: this.name,
@@ -22,9 +29,11 @@ class AbortError extends Error {
 	}
 }
 class TimeoutError extends Error {
-	constructor(limit) {
-		super(`Request timed out after ${limit}ms.`);
-		this.limit = limit;
+	name = this.constructor.name;
+	/** @param {number} timeout */
+	constructor(timeout) {
+		super(`The request timed out after ${timeout}ms.`);
+		this.timeout = timeout;
 	}
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
@@ -34,6 +43,8 @@ class TimeoutError extends Error {
 	}
 }
 class SendFailedError extends Error {
+	name = this.constructor.name;
+	/** @param {string} message */
 	constructor(message) { super(message) }
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
@@ -43,19 +54,42 @@ class SendFailedError extends Error {
 	}
 }
 
+/**
+ * @param {Response} response
+ * @param {AbortSignal} abortSignal
+ */
 async function parseDocument(response, abortSignal) {
 	const text = await response.text();
 	abortSignal.throwIfAborted();
-	const contentType = response.headers.get("Content-Type"),
-		split = contentType.indexOf(";");
+	const contentType = response.headers.get("Content-Type"), split = contentType.indexOf(";");
 	// @ts-ignore
 	return new DOMParser().parseFromString(text, split == -1 ? contentType : contentType.substring(0, split));
 }
 
+/**
+ * @param {Response} response
+ * @param {AbortSignal} abortSignal
+ */
 async function parseFragment(response, abortSignal) {
 	const text = await response.text();
 	abortSignal.throwIfAborted();
 	return document.createRange().createContextualFragment(text);
+}
+
+/**
+ * @this {AbortSignal}
+ * @param {(reason: any)=>void} reject 
+ */
+function onAborted(reject) { reject(this.reason) }
+
+/**
+ * @param {Promise<any>} source
+ * @param {AbortSignal} signal
+ */
+function wrapResult(source, signal) {
+	const { promise, reject } = Promise.withResolvers();
+	signal.addEventListener("abort", onAborted.bind(signal, reject));
+	return Promise.race([source, promise]);
 }
 
 /**
@@ -95,12 +129,9 @@ class RequestController {
 	get result() { return this.#result }
 	/**
 	 * 中止当前请求
-	 * @param {string} reason 中止原因
+	 * @param {any} [reason] 中止原因
 	 */
-	abort(reason) {
-		this.#finished = true;
-		this.#abortController.abort(reason);
-	}
+	abort(reason) { this.#abortController.abort(new AbortError(reason)) }
 	/**
 	 * @param {URLInit} url
 	 * @param {RequestInit} [options]
@@ -124,51 +155,40 @@ class RequestController {
 	}
 	/**
 	 * @param {ParseType} parseType
-	 * @param {AbortSignal} abortSignal
+	 * @param {AbortSignal} signal
 	 */
-	async #fetch(parseType, abortSignal) {
-		var response, error;
+	async #fetch(parseType, signal) {
+		var response;
 		try {
 			response = this.#response = await fetch(this.#request);
-		} catch (errorSource) {
-			switch (errorSource.name) {
-				case "AbortError":
-					error = new AbortError(errorSource.message);
-					break;
-				case "TimeoutError":
-					error = new TimeoutError(this.#timeout);
-					break;
-				default:
-					error = new SendFailedError(errorSource.message);
+		} catch (error) {
+			this.#finished = true;
+			switch (error.name) {
+				case "AbortError": throw error;
+				case "TimeoutError": throw new TimeoutError(this.#timeout);
+				default: throw new SendFailedError(error.message);
 			}
 		}
-		if (!response.ok) error = new NotOkError(response.status);
-		if (error) {
+		if (!response.ok) {
 			this.#finished = true;
-			throw error;
+			throw new NotOkError(response.status);
 		}
-		switch (parseType) {
-			case ParseType.SOURCE: return this.#finish(response, abortSignal);
-			case ParseType.JSON: return this.#finish(response.json(), abortSignal);
-			case ParseType.TEXT: return this.#finish(response.text(), abortSignal);
-			case ParseType.BLOB: return this.#finish(response.blob(), abortSignal);
-			case ParseType.BUFFER: return this.#finish(response.arrayBuffer(), abortSignal);
-			case ParseType.STREAM: return this.#finish(response.body, abortSignal);
-			case ParseType.DOCUMENT: return this.#finish(parseDocument(response, abortSignal), abortSignal);
-			case ParseType.DOCUMENT_FRAGMENT: return this.#finish(parseFragment(response, abortSignal), abortSignal);
+		try {
+			switch (parseType) {
+				case ParseType.SOURCE: return response;
+				case ParseType.JSON: return await wrapResult(response.json(), signal);
+				case ParseType.TEXT: return await wrapResult(response.text(), signal);
+				case ParseType.BLOB: return await wrapResult(response.blob(), signal);
+				case ParseType.BUFFER: return await wrapResult(response.arrayBuffer(), signal);
+				case ParseType.STREAM: return response.body;
+				case ParseType.DOCUMENT: return await wrapResult(parseDocument(response, signal), signal);
+				case ParseType.DOCUMENT_FRAGMENT: return await wrapResult(parseFragment(response, signal), signal);
+			}
+		} catch (error) {
+			throw error.name == "TimeoutError" ? new TimeoutError(this.#timeout) : error;
+		} finally {
+			this.#finished = true;
 		}
-	}
-	/**
-	 * @param {*} finalResult
-	 * @param {AbortSignal} abortSignal
-	 */
-	async #finish(finalResult, abortSignal) {
-		var result, error;
-		try { result = await finalResult } catch (errorSource) { error = errorSource }
-		this.#finished = true;
-		if (error) throw error;
-		abortSignal.throwIfAborted();
-		return result;
 	}
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
@@ -231,7 +251,7 @@ class LoadRequestController extends RequestController {
 	/**
 	 * @type {{
 	 *     selector: string,
-	 *     process(element: Element, allowCache: boolean): {request: Abortable, mission: Promise<any>},
+	 *     process(element: Element, allowCache: boolean): {controller: Abortable, mission: Promise<any>},
 	 *     [others: string]: any
 	 * }[]}
 	 */
@@ -241,13 +261,11 @@ class LoadRequestController extends RequestController {
 			/** @param {HTMLScriptElement} element */
 			process(element, allowCache) {
 				if (element.type == "module") {
-					const abortController = new AbortController,
-						{ promise, reject } = Promise.withResolvers();
-					abortController.signal.addEventListener("abort", reject);
-					return { request: abortController, mission: Promise.race([promise, import(element.src)]) };
+					const { promise, reject } = Promise.withResolvers();
+					return { controller: { abort: reject }, mission: Promise.race([promise, import(element.src)]) };
 				} else {
 					const request = get(element.src, null, ParseType.TEXT, null, allowCache);
-					return { request, mission: this.load(request.result, element) };
+					return { controller: request, mission: this.load(request.result, element) };
 				}
 			},
 			async load(result, element) {
@@ -264,7 +282,7 @@ class LoadRequestController extends RequestController {
 			/** @param {HTMLLinkElement} element  */
 			process(element, allowCache) {
 				const request = get(element.href, null, ParseType.TEXT, null, allowCache);
-				return { request, mission: this.load(request.result, element) };
+				return { controller: request, mission: this.load(request.result, element) };
 			},
 			async load(result, element) {
 				const temp = document.createElement("style");
@@ -318,7 +336,7 @@ class LoadRequestController extends RequestController {
 			for (const element of document.querySelectorAll(type.selector)) {
 				const process = type.process(element, allowCache);
 				if (!process) continue;
-				subRequests.push(process.request);
+				subRequests.push(process.controller);
 				missions.push(process.mission);
 			}
 		}
@@ -358,4 +376,4 @@ function loadDocument(url, preloadResources = true, allowCache = true, contextTy
 		get(url, null, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, null, allowCache);
 }
 
-export { get, post, loadDocument, ParseType, ContextType, AbortError, NotOkError, SendFailedError, RequestController, LoadRequestController };
+export { get, post, loadDocument, ParseType, ContextType, AbortError, TimeoutError, NotOkError, SendFailedError, RequestController, LoadRequestController };
