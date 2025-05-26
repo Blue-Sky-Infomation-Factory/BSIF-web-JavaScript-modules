@@ -54,27 +54,7 @@ class SendFailedError extends Error {
 	}
 }
 
-/**
- * @param {Response} response
- * @param {AbortSignal} abortSignal
- */
-async function parseDocument(response, abortSignal) {
-	const text = await response.text();
-	abortSignal.throwIfAborted();
-	const contentType = response.headers.get("Content-Type"), split = contentType.indexOf(";");
-	// @ts-ignore
-	return new DOMParser().parseFromString(text, split == -1 ? contentType : contentType.substring(0, split));
-}
-
-/**
- * @param {Response} response
- * @param {AbortSignal} abortSignal
- */
-async function parseFragment(response, abortSignal) {
-	const text = await response.text();
-	abortSignal.throwIfAborted();
-	return document.createRange().createContextualFragment(text);
-}
+const readonlyConfig = { writable: false, configurable: false, enumerable: true };
 
 /**
  * @this {AbortSignal}
@@ -83,21 +63,82 @@ async function parseFragment(response, abortSignal) {
 function onAborted(reject) { reject(this.reason) }
 
 /**
- * @param {Promise<any>} source
  * @param {AbortSignal} signal
  */
-function wrapResult(source, signal) {
+function wrapSignal(signal) {
 	const { promise, reject } = Promise.withResolvers();
 	signal.addEventListener("abort", onAborted.bind(signal, reject));
-	return Promise.race([source, promise]);
+	return promise;
+}
+
+/** 原版的 AbortController 太难用了，哭哭😢 */
+class AdvanceAbortController extends AbortController {
+	#timeoutId = null;
+	#timeout = null;
+	startTimer(timeout) {
+		if (this.#closed) throw new Error("Cannot start a timer on a closed controller.");
+		if (this.#timeoutId !== null) throw new Error("The controller had started a timer already.");
+		setTimeout(this.#onTimeout.bind(this), this.#timeout = timeout);
+	}
+	cancelTimer() {
+		clearTimeout(this.#timeoutId);
+		this.#timeoutId = this.#timeout = null;
+	}
+	#onTimeout() {
+		if (this.#closed) return;
+		this.#closed = true;
+		super.abort(new TimeoutError(this.#timeout));
+	}
+	#using = 1;
+	acquire() { ++this.#using }
+	#closed = false;
+	close(fatal = false) {
+		if (this.#closed) return;
+		if (fatal || !--this.#using) {
+			this.#closed = true;
+			clearTimeout(this.#timeoutId);
+		}
+	}
+	abort(reason) {
+		if (this.#closed) return;
+		this.#closed = true;
+		clearTimeout(this.#timeoutId);
+		super.abort(new AbortError(reason));
+	}
+	static {
+		Object.defineProperty(this.prototype, Symbol.toStringTag, {
+			value: this.name,
+			configurable: true
+		});
+	}
 }
 
 /**
- * @typedef {{abort(...args: any[]): void}} Abortable
+ * @param {Response} response
+ */
+async function parseDocument(response) {
+	const contentType = response.headers.get("Content-Type"), split = contentType.indexOf(";");
+	// @ts-ignore
+	return new DOMParser().parseFromString(await response.text(), split == -1 ? contentType : contentType.substring(0, split));
+}
+
+/**
+ * @param {Response} response
+ */
+async function parseFragment(response) {
+	return document.createRange().createContextualFragment(await response.text());
+}
+
+/**
  * @typedef {string[][] | Record<string, string> | string | URLSearchParams} URLSearchParamsInit
  * @typedef {string | URL} URLInit
  * @typedef {Readonly<{SOURCE: 0, JSON: 1, TEXT: 2, BLOB: 3, BUFFER: 4, STREAM: 5, DOCUMENT: 6, DOCUMENT_FRAGMENT: 7}>} enum_ParseType
  * @typedef {Readonly<{DOCUMENT: 0, FRAGMENT: 1}>} enum_ContextType
+ * @typedef {{
+ *     selector: string,
+ *     process(element: Element, baseUrl: string, allowCache: boolean, signal: AbortSignal): Promise<any>,
+ *     [others: string]: any
+ * }[]} subProcesses
  */
 /**
  * @type {enum_ParseType}
@@ -110,11 +151,28 @@ const ParseType = Enum.fromKeys(["SOURCE", "JSON", "TEXT", "BLOB", "BUFFER", "ST
 	 * @enum {enum_ContextType[keyof enum_ContextType]}
 	 */
 	// @ts-ignore
-	ContextType = Enum.fromKeys(["DOCUMENT", "FRAGMENT"]);
+	ContextType = Enum.fromKeys(["DOCUMENT", "FRAGMENT"]),
+	abortController = Symbol("abortController");
+
+/**
+ * @param {Response} response
+ * @param {ParseType} parseType
+ */
+function parseResponse(response, parseType) {
+	switch (parseType) {
+		case ParseType.SOURCE: return response;
+		case ParseType.JSON: return response.json();
+		case ParseType.TEXT: return response.text();
+		case ParseType.BLOB: return response.blob();
+		case ParseType.BUFFER: return response.arrayBuffer();
+		case ParseType.STREAM: return response.body;
+		case ParseType.DOCUMENT: return parseDocument(response);
+		case ParseType.DOCUMENT_FRAGMENT: return parseFragment(response);
+	}
+}
 
 class RequestController {
-	#abortController = new AbortController;
-	#timeout;
+	[abortController] = new AdvanceAbortController;
 	#request;
 	/** 获取请求对象 */
 	get request() { return this.#request }
@@ -131,7 +189,7 @@ class RequestController {
 	 * 中止当前请求
 	 * @param {any} [reason] 中止原因
 	 */
-	abort(reason) { this.#abortController.abort(new AbortError(reason)) }
+	abort(reason) { this[abortController].abort(reason) }
 	/**
 	 * @param {URLInit} url
 	 * @param {RequestInit} [options]
@@ -143,51 +201,46 @@ class RequestController {
 		url = new URL(url, location.href);
 		const temp = Object.assign({}, options);
 		if (!Enum.isValueOf(ParseType, parseType)) throw new TypeError("Invalid parse type.");
-		var signal = this.#abortController.signal;
+		const signalController = this[abortController],
+			signal = temp.signal = signalController.signal;
 		if (timeout !== null) {
 			timeout = Number(timeout);
 			if (!(Number.isFinite(timeout) && timeout > 0)) throw TypeError("Argument 'timeout' must be positive.");
-			signal = AbortSignal.any([signal, AbortSignal.timeout(this.#timeout = timeout)]);
+			signalController.startTimer(timeout);
 		}
-		temp.signal = signal;
 		this.#request = new Request(url, temp);
-		this.#result = this.#fetch(parseType, signal);
+		this.#result = this.#fetch(parseType, signalController, signal);
 	}
 	/**
 	 * @param {ParseType} parseType
+	 * @param {AdvanceAbortController} signalController
 	 * @param {AbortSignal} signal
 	 */
-	async #fetch(parseType, signal) {
+	async #fetch(parseType, signalController, signal) {
 		var response;
 		try {
 			response = this.#response = await fetch(this.#request);
 		} catch (error) {
 			this.#finished = true;
-			switch (error.name) {
-				case "AbortError": throw error;
-				case "TimeoutError": throw new TimeoutError(this.#timeout);
-				default: throw new SendFailedError(error.message);
-			}
+			const name = error.name;
+			if (name == "AbortError" || name == "TimeoutError") throw error;
+			signalController.close(true);
+			throw new SendFailedError(error.message);
 		}
 		if (!response.ok) {
 			this.#finished = true;
+			signalController.close(true);
 			throw new NotOkError(response.status);
 		}
 		try {
-			switch (parseType) {
-				case ParseType.SOURCE: return response;
-				case ParseType.JSON: return await wrapResult(response.json(), signal);
-				case ParseType.TEXT: return await wrapResult(response.text(), signal);
-				case ParseType.BLOB: return await wrapResult(response.blob(), signal);
-				case ParseType.BUFFER: return await wrapResult(response.arrayBuffer(), signal);
-				case ParseType.STREAM: return response.body;
-				case ParseType.DOCUMENT: return await wrapResult(parseDocument(response, signal), signal);
-				case ParseType.DOCUMENT_FRAGMENT: return await wrapResult(parseFragment(response, signal), signal);
-			}
+			return await parseResponse(response, parseType);
 		} catch (error) {
-			throw error.name == "TimeoutError" ? new TimeoutError(this.#timeout) : error;
+			if (error.name == "AbortError") throw signal.reason;
+			signalController.close(true);
+			throw error;
 		} finally {
 			this.#finished = true;
+			signalController.close();
 		}
 	}
 	static {
@@ -245,32 +298,30 @@ function post(url, body = null, parseType = ParseType.SOURCE, headers = null, se
 	return new RequestController(url, { method: "POST", headers, body }, parseType, timeout);
 }
 
-const stylesheetSkipAttributes = ["href", "rel", "type"];
+/**
+ * @param {URL | string} url
+ * @param {ParseType} parseType
+ * @param {boolean} allowCache
+ * @param {AbortSignal} signal
+ */
+async function loadSubResource(url, parseType, allowCache, signal) {
+	const options = { signal };
+	if (allowCache) options.headers = { "Cache-Control": "no-store" };
+	const response = await fetch(url, options);
+	if (!response.ok) throw new NotOkError(response.status);
+	return parseResponse(response, parseType);
+}
 
-class LoadRequestController extends RequestController {
-	/**
-	 * @type {{
-	 *     selector: string,
-	 *     process(element: Element, baseUrl: string, allowCache: boolean): {controller: Abortable, mission: Promise<any>},
-	 *     [others: string]: any
-	 * }[]}
-	 */
-	static resourceTypes = [
+const stylesheetSkipAttributes = ["href", "rel", "type"],
+	/** @type {subProcesses} */
+	defaultSubProcesses = [
 		{
 			selector: "script[src]",
 			/** @param {HTMLScriptElement} element */
-			process(element, baseUrl, allowCache) {
-				if (element.type == "module") {
-					const { promise, reject } = Promise.withResolvers();
-					return { controller: { abort: reject }, mission: Promise.race([promise, import(new URL(element.src, baseUrl).href)]) };
-				} else {
-					const request = get(new URL(element.src, baseUrl), null, ParseType.TEXT, null, allowCache);
-					return { controller: request, mission: this.load(request.result, element) };
-				}
-			},
-			async load(result, element) {
+			async process(element, baseUrl, allowCache, signal) {
+				if (element.type == "module") return Promise.race([wrapSignal(signal), import(new URL(element.src, baseUrl).href)]);
 				const temp = document.createElement("script");
-				temp.textContent = await result;
+				temp.textContent = await loadSubResource(new URL(element.src, baseUrl), ParseType.TEXT, allowCache, signal);
 				for (const attribute of element.attributes)
 					if (attribute.name != "src")
 						temp.setAttribute(attribute.name, attribute.value);
@@ -280,13 +331,9 @@ class LoadRequestController extends RequestController {
 		{
 			selector: "link[rel=stylesheet]",
 			/** @param {HTMLLinkElement} element  */
-			process(element, baseUrl, allowCache) {
-				const request = get(new URL(element.href, baseUrl), null, ParseType.TEXT, null, allowCache);
-				return { controller: request, mission: this.load(request.result, element) };
-			},
-			async load(result, element) {
+			async process(element, baseUrl, allowCache, signal) {
 				const temp = document.createElement("style");
-				temp.textContent = await result;
+				temp.textContent = await loadSubResource(new URL(element.href, baseUrl), ParseType.TEXT, allowCache, signal);
 				for (let attribute of element.attributes)
 					if (!stylesheetSkipAttributes.includes(attribute.name))
 						temp.setAttribute(attribute.name, attribute.value);
@@ -294,9 +341,13 @@ class LoadRequestController extends RequestController {
 			}
 		}
 	];
+
+class LoadRequestController extends RequestController {
+	/** @readonly */
+	static defaultSubProcesses = defaultSubProcesses;
+	static loadSubResource = loadSubResource;
+	/** @readonly */
 	static ContextType = ContextType;
-	/** @type {Abortable[]} */
-	#subRequests = null;
 	#finished = false;
 	get finished() { return this.#finished }
 	#result;
@@ -304,59 +355,58 @@ class LoadRequestController extends RequestController {
 	/**
 	 * 创建一个新的文档获取实例
 	 * @param {string} url 要获取的文档URL
-	 * @param {boolean} allowCache 是否允许缓存文档资源
 	 * @param {ContextType} contextType 文档上下文类型
+	 * @param {boolean} [allowCache] 是否允许缓存文档资源
+	 * @param {number} timeout 超时时间
+	 * @param {subProcesses} subProcesses 子资源加载配置
 	 */
-	constructor(url, allowCache, contextType = ContextType.DOCUMENT) {
+	constructor(url, contextType = ContextType.DOCUMENT, allowCache, timeout = null, subProcesses = defaultSubProcesses) {
 		if (!Enum.isValueOf(ContextType, contextType)) throw new TypeError("Invalid context type.");
+		if (!Array.isArray(subProcesses)) throw new TypeError("Argument 'subProcesses' must be an array.");
 		allowCache = Boolean(allowCache);
-		super(url, allowCache ? undefined : { headers: { "Cache-Control": "no-store" } }, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT);
-		this.#result = this.#fetch(allowCache);
+		super(url, allowCache ? undefined : { headers: { "Cache-Control": "no-store" } }, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, timeout);
+		const signalController = this[abortController];
+		signalController.acquire();
+		this.#result = this.#fetch(subProcesses, allowCache, signalController);
 	}
-	abort(reason) {
-		this.#finished = true;
-		super.abort(reason);
-		const subRequests = this.#subRequests;
-		if (subRequests)
-			for (const request of this.#subRequests) request.abort(reason);
-	}
-	async #fetch(allowCache) {
-		/** @type {Document} */
-		var document;
+	/**
+	 * @param {subProcesses} subProcesses
+	 * @param {boolean} allowCache
+	 * @param {AdvanceAbortController} signalController
+	 */
+	async #fetch(subProcesses, allowCache, signalController) {
 		try {
-			document = await super.result;
-		} catch (error) {
-			this.#finished = true;
-			throw error;
-		}
-		/** @type {Abortable[]} */
-		const subRequests = this.#subRequests = [], missions = [],
-			{ signal, url } = super.request;
-		for (const type of LoadRequestController.resourceTypes) {
-			for (const element of document.querySelectorAll(type.selector)) {
-				const process = type.process(element, url, allowCache);
-				if (!process) continue;
-				subRequests.push(process.controller);
-				missions.push(process.mission);
+			/** @type {Document} */
+			const document = await super.result, missions = [],
+				{ url } = super.request, { signal } = signalController,
+				promise = wrapSignal(signalController.signal);
+			for (const type of subProcesses) {
+				for (const element of document.querySelectorAll(type.selector)) {
+					const process = type.process(element, url, allowCache, signal);
+					if (process instanceof Promise) missions.push(process);
+				}
 			}
+			await Promise.race([promise, Promise.allSettled(missions)]);
+			signalController.close();
+			return document;
+		} catch (error) {
+			signalController.close(true);
+			throw error;
+		} finally {
+			this.#finished = true;
 		}
-		const results = await Promise.allSettled(missions);
-		this.#finished = true;
-		signal.throwIfAborted();
-		for (const result of results)
-			if (result.status == "rejected")
-				console.warn("Failed to load resource: ", result.reason);
-		return document;
 	}
 	static {
 		Object.defineProperty(this.prototype, Symbol.toStringTag, {
 			value: this.name,
 			configurable: true
 		});
-		const readonlyConfig = { writable: false, configurable: false, enumerable: true };
+		const { defaultSubProcesses } = this;
+		for (const item of defaultSubProcesses) Object.freeze(item);
+		Object.freeze(defaultSubProcesses);
 		Object.defineProperties(this, {
-			"resourceTypes": readonlyConfig,
-			"ContextType": readonlyConfig
+			defaultSubProcesses: readonlyConfig,
+			ContextType: readonlyConfig
 		});
 	}
 }
@@ -367,13 +417,14 @@ class LoadRequestController extends RequestController {
  * @param {boolean} preloadResources 是否预载相关资源
  * @param {boolean} allowCache 是否允许使用缓存
  * @param {ContextType} contextType 上下文类型
+ * @param {number} [timeout] 超时时间
  * @returns 文档请求控制器对象
  */
-function loadDocument(url, preloadResources = true, allowCache = true, contextType = ContextType.DOCUMENT) {
+function loadDocument(url, preloadResources = true, allowCache = true, contextType = ContextType.DOCUMENT, timeout) {
 	if (!Enum.isValueOf(ContextType, contextType)) throw new TypeError("Invalid context type.");
 	return preloadResources ?
-		new LoadRequestController(url, allowCache, contextType) :
-		get(url, null, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, null, allowCache);
+		new LoadRequestController(url, contextType, allowCache, timeout) :
+		get(url, null, contextType ? ParseType.DOCUMENT_FRAGMENT : ParseType.DOCUMENT, null, allowCache, timeout);
 }
 
 export { get, post, loadDocument, ParseType, ContextType, AbortError, TimeoutError, NotOkError, SendFailedError, RequestController, LoadRequestController };
