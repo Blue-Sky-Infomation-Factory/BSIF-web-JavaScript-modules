@@ -251,7 +251,7 @@ class LoadRequestController extends RequestController {
 	/**
 	 * @type {{
 	 *     selector: string,
-	 *     process(element: Element, allowCache: boolean): {controller: Abortable, mission: Promise<any>},
+	 *     process(element: Element, baseUrl: string, allowCache: boolean): {controller: Abortable, mission: Promise<any>},
 	 *     [others: string]: any
 	 * }[]}
 	 */
@@ -259,12 +259,12 @@ class LoadRequestController extends RequestController {
 		{
 			selector: "script[src]",
 			/** @param {HTMLScriptElement} element */
-			process(element, allowCache) {
+			process(element, baseUrl, allowCache) {
 				if (element.type == "module") {
 					const { promise, reject } = Promise.withResolvers();
-					return { controller: { abort: reject }, mission: Promise.race([promise, import(element.src)]) };
+					return { controller: { abort: reject }, mission: Promise.race([promise, import(new URL(element.src, baseUrl).href)]) };
 				} else {
-					const request = get(element.src, null, ParseType.TEXT, null, allowCache);
+					const request = get(new URL(element.src, baseUrl), null, ParseType.TEXT, null, allowCache);
 					return { controller: request, mission: this.load(request.result, element) };
 				}
 			},
@@ -280,8 +280,8 @@ class LoadRequestController extends RequestController {
 		{
 			selector: "link[rel=stylesheet]",
 			/** @param {HTMLLinkElement} element  */
-			process(element, allowCache) {
-				const request = get(element.href, null, ParseType.TEXT, null, allowCache);
+			process(element, baseUrl, allowCache) {
+				const request = get(new URL(element.href, baseUrl), null, ParseType.TEXT, null, allowCache);
 				return { controller: request, mission: this.load(request.result, element) };
 			},
 			async load(result, element) {
@@ -331,10 +331,10 @@ class LoadRequestController extends RequestController {
 		}
 		/** @type {Abortable[]} */
 		const subRequests = this.#subRequests = [], missions = [],
-			signal = super.request.signal
+			{ signal, url } = super.request;
 		for (const type of LoadRequestController.resourceTypes) {
 			for (const element of document.querySelectorAll(type.selector)) {
-				const process = type.process(element, allowCache);
+				const process = type.process(element, url, allowCache);
 				if (!process) continue;
 				subRequests.push(process.controller);
 				missions.push(process.mission);
