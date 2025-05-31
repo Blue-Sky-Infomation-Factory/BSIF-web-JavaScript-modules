@@ -50,4 +50,5 @@ declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection): {
 	nodes: CaughtNodes
 };
 declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection, appendTo: Node): CaughtNodes;
-export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES }
+export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES };
+export type { ArrayHTMLCollection, ArrayHTMLNodeContent };
