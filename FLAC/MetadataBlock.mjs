@@ -20,14 +20,8 @@ class MetadataBlock {
 		switch (this.type) {
 			case 0: return new StreamInfoMetadata(this.data);
 			case 1: return this.data.byteLength;
-			case 2: {
-				const data = this.data;
-				return Object.defineProperties(Object.create(ApplicationMetadata), {
-					applicationId: { value: bigEndianToUint(data.subarray(0, 4)), enumerable: true },
-					data: { value: data.subarray(4), enumerable: true }
-				});
-			}
-			case 3: return; //not support
+			case 2: return new ApplicationMetadata(this.data);
+			case 3: return decodeSeekTable(this.data);
 			case 4: return new VorbisCommentMetadata(this.data);
 			case 5: return; //not support
 			case 6: return new PictureMetedata(this.data);
@@ -97,7 +91,57 @@ class StreamInfoMetadata {
 	}
 	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true }) }
 }
-const ApplicationMetadata = Object.defineProperty({}, Symbol.toStringTag, { value: "ApplicationMetadata", configurable: true });
+class ApplicationMetadata {
+	constructor(data) {
+		if (!(data instanceof Uint8Array)) throw new TypeError("Argument 'data' is not a Uint8Array.");
+		Object.defineProperties(this, {
+			applicationId: { value: bigEndianToUint(data.subarray(0, 4)), enumerable: true },
+			data: { value: data.subarray(4), enumerable: true }
+		});
+	}
+	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true }) }
+}
+const placeholderSeekPoint = Symbol("placeholder seek point");
+class SeekPoint {
+	constructor(firstSampleIndex, offset, sampleNumber) {
+		Object.defineProperties(this, {
+			indexOfFirstSampleInTargetFrame: { value: firstSampleIndex, enumerable: true },
+			offsetOfTargetFrame: { value: offset, enumerable: true },
+			sampleNumberOfTargetFrame: { value: sampleNumber, enumerable: true }
+		});
+	}
+	static {
+		Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true });
+		Object.defineProperty(this, "placeholder", { value: placeholderSeekPoint, configurable: true });
+	}
+}
+function seekPointSort(item1, item2) {
+	const isSymbol1 = typeof item1 == "symbol", isSymbol2 = typeof item2 == "symbol";
+	if (isSymbol1 || isSymbol2) {
+		if (isSymbol1 && isSymbol2) return 0;
+		return isSymbol1 ? 1 : -1;
+	}
+	return Number(item1.indexOfFirstSampleInTargetFrame - item2.indexOfFirstSampleInTargetFrame);
+}
+function decodeSeekTable(data) {
+	const result = [], context = new DataView(data.buffer, data.byteOffset, data.byteLength), length = context.byteLength;
+	var current = 0;
+	while (current < length) {
+		const firstSampleIndex = context.getBigUint64(current);
+		current += 8;
+		if (firstSampleIndex == 0xFFFFFFFFFFFFFFFFn) {
+			result.push(placeholderSeekPoint);
+			continue;
+		}
+		const offset = context.getBigUint64(current);
+		current += 8;
+		const sampleNumber = context.getUint16(current);
+		current += 2;
+		result.push(new SeekPoint(firstSampleIndex, offset, sampleNumber));
+	}
+	result.sort(seekPointSort);
+	return result;
+}
 class VorbisCommentMetadata {
 	#vendor
 	get vendor() { return this.#vendor }
@@ -184,4 +228,4 @@ class PictureMetedata {
 	}
 	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: "PictureMetedata", configurable: true }) }
 }
-export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, VorbisCommentMetadata, metadataBlockTypes }
+export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, ApplicationMetadata, SeekPoint, VorbisCommentMetadata, metadataBlockTypes }
