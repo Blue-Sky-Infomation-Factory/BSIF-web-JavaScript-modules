@@ -31,7 +31,7 @@ class MetadataBlock {
 			case 4: return new VorbisCommentMetadata(this.data);
 			case 5: return; //not support
 			case 6: return new PictureMetedata(this.data);
-			default: throw new Error("Failed to execute 'decodeData' on 'MetadataBlock': Invalid type.")
+			default: throw new Error("Invalid type.")
 		}
 	}
 	static encodeHeader(data, type, isLast) {
@@ -45,10 +45,10 @@ class MetadataBlock {
 				length = data.size;
 				break;
 			default:
-				throw new TypeError("Failed to execute 'encodeMetadataBlockHeader': Argument 'data' must be type of TypedArray, ArrayBuffer or Blob.");
+				throw new TypeError("Argument 'data' must be type of TypedArray, ArrayBuffer or Blob.");
 		}
-		if (typeof type != "number" || !Number.isInteger(type) || type < 0 || type > 6) throw new Error("Failed to execute 'encodeMetadataBlockHeader': Argument 'type' is invalid.");
-		if (length > 16777215) throw new Error("Failed to execute 'encodeMetadataBlockHeader': Data length must not grater than 16777215.");
+		if (typeof type != "number" || !Number.isInteger(type) || type < 0 || type > 6) throw new Error("Argument 'type' is invalid.");
+		if (length > 16777215) throw new Error("Data length must not grater than 16777215.");
 		const header = new Uint8Array(4);
 		header[0] = isLast ? type | 128 : type;
 		uintToBigEndian(length, header.subarray(1));
@@ -65,7 +65,7 @@ function allMetadataBlock(context) {
 		case typeOfBufferContext:
 			if ((array = context.array) instanceof Uint8Array) break;
 		default:
-			throw new TypeError("Failed to execute 'allMetadataBlock': Argument 'context' is not a Uint8Array or a BufferContext containing a Uint8Array.");
+			throw new TypeError("Argument 'context' is not a Uint8Array or a BufferContext<Uint8Array>.");
 	}
 	const result = [];
 	var last = false, current = context.current;
@@ -80,8 +80,8 @@ function allMetadataBlock(context) {
 const streamInfoMetadataSplitter = [20, 3, 5, 36];
 class StreamInfoMetadata {
 	constructor(data) {
-		if (!(data instanceof Uint8Array)) throw new TypeError("Failed to construct 'StreamInfoMetadata': Argument 'data' is not a Uint8Array.");
-		if (data.byteLength != 34) throw new Error("Failed to construct 'StreamInfoMetadata': Data length is not 34 bytes.");
+		if (!(data instanceof Uint8Array)) throw new TypeError("Argument 'data' is not a Uint8Array.");
+		if (data.byteLength != 34) throw new Error("Data length is not 34 bytes.");
 		const temp = splitBytes(data.subarray(10, 18), streamInfoMetadataSplitter);
 		Object.defineProperties(this, {
 			minBlockSize: { value: bigEndianToUint(data.subarray(0, 2)), enumerable: true },
@@ -106,7 +106,7 @@ class VorbisCommentMetadata {
 		this.#vendor = value;
 	}
 	constructor(data) {
-		if (!(data instanceof Uint8Array)) throw new TypeError("Failed to construct 'VorbisCommentMetadata': Argument 'data' is not a Uint8Array.");
+		if (!(data instanceof Uint8Array)) throw new TypeError("Argument 'data' is not a Uint8Array.");
 		const tags = {};
 		var index = 4;
 		this.#vendor = decodeString(data.subarray(index, index += littleEndianToUint(data.subarray(0, 4))));
@@ -124,39 +124,39 @@ class VorbisCommentMetadata {
 	}
 	encode() { return VorbisCommentMetadata.encode(this.tags, this.#vendor) }
 	static encode(tags, vendor = "") {
-		if (!(tags instanceof Object)) throw new TypeError("Failed to execute 'encode': Argument 'tags' must be an object.");
-		if (typeof vendor != "string") throw new TypeError("Failed to execute 'encode': Argument 'vendor' must be a string.");
+		if (!(tags instanceof Object)) throw new TypeError("Argument 'tags' must be an object.");
+		if (typeof vendor != "string") throw new TypeError("Argument 'vendor' must be a string.");
 		vendor = encodeString(vendor || "BSIF.FLAC.MetadataBlock");
 		var length = vendor.byteLength + 8;
-		if (length > 16777215) throw new Error("Failed to execute 'encode': Content too long.");
+		if (length > 16777215) throw new Error("Content too long.");
 		const temp = [];
 		var n = 0;
 		for (let key in tags) {
-			if (key.indexOf("=") != -1) throw new Error("Failed to execute 'encode': The key of tag cannot contain character 0x3D(=).");
+			if (key.indexOf("=") != -1) throw new Error("The key of tag cannot contain character 0x3D(=).");
 			const data = tags[key];
 			switch (typeof data) {
 				case "string": {
 					const item = encodeString(`${key}=${data}`), itemLength = item.byteLength;
 					length += itemLength + 4;
-					if (length > 16777215) throw new Error("Failed to execute 'encode': Content too long.");
+					if (length > 16777215) throw new Error("Content too long.");
 					temp.push(uintToLittleEndian(itemLength, new Uint8Array(4)), item);
 					++n;
 					break;
 				}
 				case "object":
-					if (!Array.isArray(data)) throw new TypeError("Failed to execute 'encode': Invalid tag data.");
+					if (!Array.isArray(data)) throw new TypeError("Invalid tag data.");
 					for (let item of data) {
-						if (typeof item != "string") throw new TypeError("Failed to execute 'encode': Invalid tag data.");
+						if (typeof item != "string") throw new TypeError("Invalid tag data.");
 						item = encodeString(`${key}=${item}`);
 						const itemLength = item.byteLength;
 						length += itemLength + 4;
-						if (length > 16777215) throw new Error("Failed to execute 'encode': Content too long.");
+						if (length > 16777215) throw new Error("Content too long.");
 						temp.push(uintToLittleEndian(itemLength, new Uint8Array(4)), item);
 						++n;
 					}
 					break;
 				default:
-					throw new TypeError("Failed to execute 'encode': Invalid tag data.");
+					throw new TypeError("Invalid tag data.");
 			}
 		}
 		temp.unshift(uintToLittleEndian(vendorLength, new Uint8Array(4)), vendor, uintToLittleEndian(n, new Uint8Array(4)))
@@ -165,7 +165,7 @@ class VorbisCommentMetadata {
 }
 class PictureMetedata {
 	constructor(data) {
-		if (!(data instanceof Uint8Array)) throw new TypeError("Failed to construct 'PictureMetedata': Argument 'data' is not a Uint8Array.");
+		if (!(data instanceof Uint8Array)) throw new TypeError("Argument 'data' is not a Uint8Array.");
 		let current = 8;
 		Object.defineProperty(this, "relationShip", { value: bigEndianToUint(data.subarray(0, 4)), enumerable: true });
 		let length = bigEndianToUint(data.subarray(4, 8));

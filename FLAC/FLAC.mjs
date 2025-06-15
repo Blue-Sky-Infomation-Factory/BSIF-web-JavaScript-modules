@@ -16,8 +16,8 @@ class FLAC {
 }
 function findStreamInfo(item) { return item.type == STREAMINFO }
 function extract(data, extractFrames = false) {
-	if (!(data instanceof Uint8Array)) throw new TypeError("Failed to execute 'decode': Argument 'data' is not a Uint8Array.");
-	if (typeof extractFrames != "boolean") throw new TypeError("Failed to execute 'decode': Argument 'extractFrames' is not a boolean.");
+	if (!(data instanceof Uint8Array)) throw new TypeError("Argument 'data' is not a Uint8Array.");
+	if (typeof extractFrames != "boolean") throw new TypeError("Argument 'extractFrames' is not a boolean.");
 	const context = checkHead(data),
 		metadataBlocks = allMetadataBlock(context);
 	return new FLAC(context, metadataBlocks, extractFrames ? extractFramesFunction(context, metadataBlocks.find(findStreamInfo)?.decodeData() ?? console.warn("Cannot find stream info metadata!")) : null);
