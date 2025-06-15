@@ -101,7 +101,6 @@ class ApplicationMetadata {
 	}
 	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true }) }
 }
-const placeholderSeekPoint = Symbol("placeholder seek point");
 class SeekPoint {
 	constructor(firstSampleIndex, offset, sampleNumber) {
 		Object.defineProperties(this, {
@@ -110,29 +109,15 @@ class SeekPoint {
 			sampleNumberOfTargetFrame: { value: sampleNumber, enumerable: true }
 		});
 	}
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true });
-		Object.defineProperty(this, "placeholder", { value: placeholderSeekPoint, configurable: true });
-	}
+	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true }) }
 }
-function seekPointSort(item1, item2) {
-	const isSymbol1 = typeof item1 == "symbol", isSymbol2 = typeof item2 == "symbol";
-	if (isSymbol1 || isSymbol2) {
-		if (isSymbol1 && isSymbol2) return 0;
-		return isSymbol1 ? 1 : -1;
-	}
-	return Number(item1.indexOfFirstSampleInTargetFrame - item2.indexOfFirstSampleInTargetFrame);
-}
+function seekPointSort(item1, item2) { return Number(item1.indexOfFirstSampleInTargetFrame - item2.indexOfFirstSampleInTargetFrame) }
 function decodeSeekTable(data) {
 	const result = [], context = new DataView(data.buffer, data.byteOffset, data.byteLength), length = context.byteLength;
 	var current = 0;
 	while (current < length) {
 		const firstSampleIndex = context.getBigUint64(current);
 		current += 8;
-		if (firstSampleIndex == 0xFFFFFFFFFFFFFFFFn) {
-			result.push(placeholderSeekPoint);
-			continue;
-		}
 		const offset = context.getBigUint64(current);
 		current += 8;
 		const sampleNumber = context.getUint16(current);

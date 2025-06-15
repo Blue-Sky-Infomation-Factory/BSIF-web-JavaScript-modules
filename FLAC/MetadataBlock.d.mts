@@ -6,7 +6,7 @@ declare class MetadataBlock {
 	readonly type: metadataBlockTypes;
 	readonly typeName: string;
 	readonly data: Uint8Array;
-	decodeData(): StreamInfoMetadata | number | ApplicationMetadata | (SeekPoint | symbol)[] | PictureMetadata | VorbisCommentMetadata | void;
+	decodeData(): StreamInfoMetadata | number | ApplicationMetadata | SeekPoint[] | PictureMetadata | VorbisCommentMetadata | void;
 	static encodeHeader(data: TypedArray | ArrayBuffer | Blob, type: metadataBlockTypes, isLast: boolean): Uint8Array;
 }
 declare class StreamInfoMetadata {
