@@ -111,7 +111,7 @@ class SeekPoint {
 	}
 	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true }) }
 }
-function seekPointSort(item1, item2) { return Number(item1.indexOfFirstSampleInTargetFrame - item2.indexOfFirstSampleInTargetFrame) }
+// function seekPointSort(item1, item2) { return Number(item1.indexOfFirstSampleInTargetFrame - item2.indexOfFirstSampleInTargetFrame) }
 function decodeSeekTable(data) {
 	const result = [], context = new DataView(data.buffer, data.byteOffset, data.byteLength), length = context.byteLength;
 	var current = 0;
@@ -124,7 +124,6 @@ function decodeSeekTable(data) {
 		current += 2;
 		result.push(new SeekPoint(firstSampleIndex, offset, sampleNumber));
 	}
-	result.sort(seekPointSort);
 	return result;
 }
 class VorbisCommentMetadata {
