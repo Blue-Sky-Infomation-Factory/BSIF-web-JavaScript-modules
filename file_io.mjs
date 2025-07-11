@@ -19,11 +19,21 @@ async function get(options) {
 	const temp = await Promise.all((await showOpenFilePicker(options)).map(fileHandleMap));
 	return options?.multiple ? temp : temp[0];
 }
+function inputGet(multiple = false, accept = "") {
+	const input = document.createElement("input");
+	input.type = "file";
+	input.multiple = multiple;
+	input.accept = accept;
+	const { promise, resolve } = Promise.withResolvers();
+	input.click();
+	input.addEventListener("change", function () { resolve(multiple ? Array.from(this.files) : this.files[0]) })
+	return promise;
+}
 async function open(options) {
 	const result = await showOpenFilePicker(options);
 	return options?.multiple ? result : result[0];
 }
-const openDirectory = showDirectoryPicker.bind(window);
+const openDirectory = window.showDirectoryPicker?.bind(window);
 async function save(data, options) {
 	if (arguments.length < 1) throw new TypeError("Failed to execute 'save': 1 argument required, but only 0 present.");
 	if (!(data instanceof TypedArray || data instanceof Blob || data instanceof DataView || data instanceof ArrayBuffer || typeof data == "string")) throw new TypeError("Failed to execute 'save': Argument 'data' is not valid type.");
@@ -45,4 +55,4 @@ function downloadSave(file, saveName) {
 	address.dispatchEvent(new MouseEvent("click"));
 	URL.revokeObjectURL(objectURL);
 }
-export { get, open, openDirectory, save, downloadSave, read, readableTypes }
+export { get, inputGet, open, openDirectory, save, downloadSave, read, readableTypes }

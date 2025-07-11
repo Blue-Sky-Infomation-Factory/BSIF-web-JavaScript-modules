@@ -4,6 +4,7 @@ const enum readableTypes { TEXT, DATA_URL, ARRAY_BUFFER };
 declare function read(file: Blob, readType: readableTypes.TEXT | readableTypes.DATA_URL): Promise<string>;
 declare function read(file: Blob, readType: readableTypes.ARRAY_BUFFER): Promise<ArrayBuffer>;
 declare function downloadSave(file: Blob, saveName?: string): void;
+declare function inputGet(multiple?: boolean, accept?: string): Promise<File | File[]>;
 declare function get<T extends boolean>(options?: openFileOptions<T>): Promise<T extends true ? File[] : File>;
 declare function save(data: saveTypes, options?: saveFileOptions): Promise<boolean>;
 declare function open<T extends boolean>(options?: openFileOptions<T>): Promise<T extends true ? FileSystemFileHandle[] : FileSystemFileHandle>;
