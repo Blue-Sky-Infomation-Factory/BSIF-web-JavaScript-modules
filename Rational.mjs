@@ -13,18 +13,24 @@ class DivideByZeroError extends Error {
 		})
 	}
 }
+/**
+ * Find the greatest common divisor of two numbers.
+ * @param {number} n Number 1.
+ * @param {number} d Number 2.
+ * @returns The greatest common divisor of the two numbers.
+ */
+function reduceFactor(n, d) {
+	while (d != 0) d = n % (n = d);
+	return n;
+}
 class Rational {
-	static #reduceFactor(n, d) {
-		while (d != 0) d = n % (n = d);
-		return n;
-	}
-	static #denominatorPositify(instance, n, d) {
+	#setData(n, d) {
 		if (d < 0) {
-			instance.#denominator = -d;
-			instance.#numerator = -n;
+			this.#denominator = -d;
+			this.#numerator = -n;
 		} else {
-			instance.#denominator = d;
-			instance.#numerator = n;
+			this.#denominator = d;
+			this.#numerator = n;
 		}
 	}
 	#denominator;
@@ -39,16 +45,16 @@ class Rational {
 			if (!isInteger(x)) throw new TypeError("Failed to construct 'Rational': Argument 'numerator' is not an integer.");
 			if (!isInteger(denominator = Number(denominator))) throw new TypeError("Failed to construct 'Rational': Argument 'denominator' is not an integer.");
 			if (denominator == 0) throw new DivideByZeroError("Failed to construct 'Rational': Argument 'denominator' cannot be 0.");
-			const divisor = Rational.#reduceFactor(x, denominator);
-			Rational.#denominatorPositify(this, x / divisor, denominator / divisor);
+			const divisor = reduceFactor(x, denominator);
+			this.#setData(x / divisor, denominator / divisor);
 		} else if (isFinite(x)) {
 			denominator = 1;
 			while (!isInteger(x)) {
 				denominator *= 10;
 				x *= 10;
 			}
-			const divisor = Rational.#reduceFactor(x, denominator);
-			Rational.#denominatorPositify(this, x / divisor, denominator / divisor);
+			const divisor = reduceFactor(x, denominator);
+			this.#setData(x / divisor, denominator / divisor);
 		} else {
 			this.#numerator = x;
 			this.#denominator = 1;
