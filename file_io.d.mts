@@ -9,7 +9,7 @@ declare function get<T extends boolean>(options?: openFileOptions<T>): Promise<T
 declare function save(data: saveTypes, options?: saveFileOptions): Promise<boolean>;
 declare function open<T extends boolean>(options?: openFileOptions<T>): Promise<T extends true ? FileSystemFileHandle[] : FileSystemFileHandle>;
 declare function openDirectory(options?: openDirectoryOptions): Promise<FileSystemDirectoryHandle>;
-export { get, open, openDirectory, save, downloadSave, read, readableTypes }
+export { get, inputGet, open, openDirectory, save, downloadSave, read, readableTypes }
 //dom.d.ts
 type acceptType = {
 	description?: string,
