@@ -50,5 +50,11 @@ declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection): {
 	nodes: CaughtNodes
 };
 declare function parseAndGetNodes(ArrayHTML: ArrayHTMLCollection, appendTo: Node): CaughtNodes;
-export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES };
+declare class ParseError extends Error {
+	sourceError: Error | null;
+	structName: string;
+	data: any;
+	node: Node | null;
+}
+export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES, ParseError };
 export type { ArrayHTMLCollection, ArrayHTMLNodeContent };

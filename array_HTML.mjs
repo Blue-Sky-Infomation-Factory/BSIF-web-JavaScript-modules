@@ -1,6 +1,16 @@
 const EVENT_LISTENERS = Symbol("event listeners"), OBJECT_PROPERTIES = Symbol("object properties");
+class ParseError extends Error {
+	constructor(message, structName, data, node = null, sourceError = null) {
+		super(message);
+		this.sourceError = sourceError;
+		this.structName = structName;
+		this.data = data;
+		this.node = node;
+	}
+	static { this.prototype.name = this.name }
+}
 function parseCollection(data, outer, collector) {
-	if (!Array.isArray(data)) throw new TypeError("Parse error: Non-Array object");
+	if (!Array.isArray(data)) throw new ParseError("Non-Array object.", "collection", data);
 	for (let item of data) {
 		switch (typeof item) {
 			case "string":
@@ -58,7 +68,7 @@ function parseContent(node, content, collector) {
 	}
 }
 function parseNode(data, outer, collector) {
-	if (!Array.isArray(data)) throw new TypeError("Parse error: Non-Array object");
+	if (!Array.isArray(data)) throw new ParseError("Non-Array object.", "node", data);
 	var content = data[1], node;
 	switch (data[0]) {
 		case "#comment":
@@ -68,12 +78,11 @@ function parseNode(data, outer, collector) {
 			outer.appendChild(node = document.createTextNode(content));
 			break;
 		case "#shadow":
-			if (!(outer instanceof Element)) throw new TypeError("Container is not an Element.");
+			if (!(outer instanceof Element)) throw new ParseError("Container is not an Element.", "shadow", data, outer);
 			try {
 				node = outer.attachShadow(data[2])
 			} catch (error) {
-				console.warn("Parse error: Failed to attach shadow DOM\n", data, "\non", outer, `\n${error.name}: ${error.message}`);
-				return;
+				throw new ParseError("Failed to attach shadow DOM.", "shadow", data, outer, error);
 			}
 			parseContent(node, content, collector);
 			break;
@@ -108,7 +117,7 @@ function parse(ArrayHTML) {
 	return documentFragment;
 }
 function parseAndGetNodes(ArrayHTML, appendTo) {
-	if (arguments.length > 1 && !(appendTo instanceof Node)) throw new TypeError("Failed to execute 'parseAndGetNodes': Argument 'appendTo' is not type of Node.");
+	if (arguments.length > 1 && !(appendTo instanceof Node)) throw new TypeError("Argument 'appendTo' is not type of Node.");
 	const nodes = {}, documentFragment = document.createDocumentFragment();
 	parseCollection(ArrayHTML, documentFragment, nodes);
 	if (appendTo) {
@@ -153,4 +162,4 @@ function serialize(node, onlyChildren = false) {
 	if (onlyChildren) { serializeIterator(node, ArrayHtml) } else { serializeNode(node, ArrayHtml) }
 	return ArrayHtml;
 }
-export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES }
+export { parse, serialize, parseAndGetNodes, EVENT_LISTENERS, OBJECT_PROPERTIES, ParseError };
