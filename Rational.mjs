@@ -1,17 +1,7 @@
 const { isFinite, isInteger, isNaN } = Number,
 	toPrimitive = Symbol.toPrimitive;
 class DivideByZeroError extends Error {
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, {
-			value: this.name,
-			configurable: true
-		});
-		Object.defineProperty(this.prototype, "name", {
-			value: this.name,
-			writable: true,
-			configurable: true
-		})
-	}
+	static { this.prototype.name = this.name }
 }
 /**
  * Find the greatest common divisor of two numbers.

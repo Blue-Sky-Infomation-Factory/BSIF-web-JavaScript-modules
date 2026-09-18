@@ -1,57 +1,33 @@
 import Enum from "./Enum.mjs";
 
 class NotOkError extends Error {
-	name = this.constructor.name;
 	/** @param {number} statusCode */
 	constructor(statusCode) {
 		super(`The request failed with status code ${statusCode}.`);
 		this.statusCode = statusCode;
 	}
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, {
-			value: this.name,
-			configurable: true
-		});
-	}
+	static { this.prototype.name = this.name }
 }
 class AbortError extends Error {
-	name = this.constructor.name;
 	/** @param {any} reason */
 	constructor(reason) {
 		super("The request aborted due to the abort() method being called.");
 		this.reason = reason;
 	}
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, {
-			value: this.name,
-			configurable: true
-		});
-	}
+	static { this.prototype.name = this.name }
 }
 class TimeoutError extends Error {
-	name = this.constructor.name;
 	/** @param {number} timeout */
 	constructor(timeout) {
 		super(`The request timed out after ${timeout}ms.`);
 		this.timeout = timeout;
 	}
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, {
-			value: this.name,
-			configurable: true
-		});
-	}
+	static { this.prototype.name = this.name }
 }
 class SendFailedError extends Error {
-	name = this.constructor.name;
 	/** @param {string} message */
 	constructor(message) { super(message) }
-	static {
-		Object.defineProperty(this.prototype, Symbol.toStringTag, {
-			value: this.name,
-			configurable: true
-		});
-	}
+	static { this.prototype.name = this.name }
 }
 
 const readonlyConfig = { writable: false, configurable: false, enumerable: true };
