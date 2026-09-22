@@ -24,9 +24,10 @@ function inputGet(multiple = false, accept = "") {
 	input.type = "file";
 	input.multiple = multiple;
 	input.accept = accept;
-	const { promise, resolve } = Promise.withResolvers();
+	const { promise, resolve, reject } = Promise.withResolvers();
+	input.addEventListener("change", function () { resolve(multiple ? Array.from(this.files) : this.files[0]) });
+	input.addEventListener("cancel", function () { reject(new DOMException("User canceled.", "AbortError")) });
 	input.click();
-	input.addEventListener("change", function () { resolve(multiple ? Array.from(this.files) : this.files[0]) })
 	return promise;
 }
 async function open(options) {
