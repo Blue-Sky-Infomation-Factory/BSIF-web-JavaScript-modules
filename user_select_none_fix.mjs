@@ -39,7 +39,7 @@ class UserSelectNoneFixController {
 		const { target } = event;
 		if (!(target instanceof Element)) return;
 		const selection = document.getSelection();
-		if (!selection || selection.isCollapsed || isUserSelectable(target)) return;
+		if (!selection || selection.type != "Range" || isUserSelectable(target)) return;
 		selection.removeAllRanges();
 	}
 	#handlerFunction = this.#handler.bind(this);
