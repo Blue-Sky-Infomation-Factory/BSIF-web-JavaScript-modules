@@ -2,14 +2,14 @@ import { splitBytes, littleEndianToUint, bigEndianToUint, uintToLittleEndian, ui
 import Enum from "../Enum.mjs";
 import { decodeString, encodeString } from "../utf-8.mjs";
 import BufferContext from "../BufferContext.mjs";
-const metadataBlockTypes = Enum.fromKeys(["STREAMINFO", "PADDING", "APPLICATION", "SEEKTABLE", "VORBIS_COMMENT", "CUESHEET", "PICTURE"]);
+const MetadataBlockType = Enum.fromKeys(["STREAMINFO", "PADDING", "APPLICATION", "SEEKTABLE", "VORBIS_COMMENT", "CUESHEET", "PICTURE"]);
 const typeOfUint8Array = Uint8Array.prototype,
 	typeOfBufferContext = BufferContext.prototype,
 	typeOfTypedArray = TypedArray.prototype,
 	typeOfArrayBuffer = ArrayBuffer.prototype,
 	typeOfBlob = Blob.prototype;
 class MetadataBlock {
-	get typeName() { return Enum.keyOf(metadataBlockTypes, this.type) ?? "RESERVED" }
+	get typeName() { return Enum.keyOf(MetadataBlockType, this.type) ?? "RESERVED" }
 	constructor(type, data) {
 		Object.defineProperties(this, {
 			type: { value: type, enumerable: true },
@@ -212,4 +212,4 @@ class PictureMetedata {
 	}
 	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: "PictureMetedata", configurable: true }) }
 }
-export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, ApplicationMetadata, SeekPoint, VorbisCommentMetadata, metadataBlockTypes }
+export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, ApplicationMetadata, SeekPoint, VorbisCommentMetadata, MetadataBlockType }

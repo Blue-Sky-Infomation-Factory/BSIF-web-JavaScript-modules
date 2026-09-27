@@ -1,7 +1,7 @@
 import BufferContext from "../BufferContext.mjs";
-import { allMetadataBlock, metadataBlockTypes } from "./MetadataBlock.mjs";
+import { allMetadataBlock, MetadataBlockType } from "./MetadataBlock.mjs";
 import { extractFrames as extractFramesFunction } from "./Frame.mjs"
-const headValue = [102, 76, 97, 67], { STREAMINFO } = metadataBlockTypes;
+const headValue = [102, 76, 97, 67], { STREAMINFO } = MetadataBlockType;
 function checkHead(data) {
 	for (let i = 0; i < 4; ++i) if (data[i] != headValue[i]) throw new Error("Invalid data");
 	return new BufferContext(data, 4);

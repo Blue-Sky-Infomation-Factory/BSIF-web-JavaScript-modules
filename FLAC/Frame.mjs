@@ -112,10 +112,10 @@ function getChannels(code) {
 		default: throw new Error("Invalid/not supported channels code.");
 	}
 }
-const subFrameTypes = Enum.fromKeys(["CONSTANT", "VERBATIM", "FIXED", "LPC"]);
+const SubFrameType = Enum.fromKeys(["CONSTANT", "VERBATIM", "FIXED", "LPC"]);
 class SubFrame {
 	constructor(wastedBits) { defineProperty(this, "wastedBits", { value: wastedBits, enumerable: true }) }
-	get typeName() { return Enum.keyOf(subFrameTypes, this.type) }
+	get typeName() { return Enum.keyOf(SubFrameType, this.type) }
 	static {
 		defineProperties(this.prototype, {
 			[Symbol.toStringTag]: { value: this.name, configurable: true },
@@ -131,7 +131,7 @@ class ConstantSubFrame extends SubFrame {
 	static {
 		defineProperties(this.prototype, {
 			[Symbol.toStringTag]: { value: this.name, configurable: true },
-			type: { value: subFrameTypes.CONSTANT, enumerable: true }
+			type: { value: SubFrameType.CONSTANT, enumerable: true }
 		});
 	}
 }
@@ -145,7 +145,7 @@ class VerbatimSubFrame extends SubFrame {
 	static {
 		defineProperties(this.prototype, {
 			[Symbol.toStringTag]: { value: this.name, configurable: true },
-			type: { value: subFrameTypes.VERBATIM, enumerable: true }
+			type: { value: SubFrameType.VERBATIM, enumerable: true }
 		});
 	}
 }
@@ -212,7 +212,7 @@ class FixedSubFrame extends PredictionSubFrame {
 	static {
 		defineProperties(this.prototype, {
 			[Symbol.toStringTag]: { value: this.name, configurable: true },
-			type: { value: subFrameTypes.FIXED, enumerable: true }
+			type: { value: SubFrameType.FIXED, enumerable: true }
 		});
 	}
 }
@@ -233,7 +233,7 @@ class LPCSubFrame extends PredictionSubFrame {
 	static {
 		defineProperties(this.prototype, {
 			[Symbol.toStringTag]: { value: this.name, configurable: true },
-			type: { value: subFrameTypes.LPC, enumerable: true }
+			type: { value: SubFrameType.LPC, enumerable: true }
 		});
 	}
 }
@@ -369,4 +369,4 @@ class Frame {
 	verify() { return CRC16Check(this.#data) == this.CRC16 }
 	static { defineProperties(this.prototype, Symbol.toStringTag, { value: this.name, configurable: true }) }
 }
-export { extractFrames, extractFrame, ConstantSubFrame, VerbatimSubFrame, FixedSubFrame, LPCSubFrame, SubFrame, Frame, subFrameTypes }
+export { extractFrames, extractFrame, ConstantSubFrame, VerbatimSubFrame, FixedSubFrame, LPCSubFrame, SubFrame, Frame, SubFrameType }

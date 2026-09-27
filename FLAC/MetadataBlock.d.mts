@@ -1,13 +1,13 @@
 import { TypedArray } from "../binary_operate.mjs";
 import BufferContext from "../BufferContext.mjs";
-const enum metadataBlockTypes { STREAMINFO, PADDING, APPLICATION, SEEKTABLE, VORBIS_COMMENT, CUESHEET, PICTURE, RESERVED }
+const enum MetadataBlockType { STREAMINFO, PADDING, APPLICATION, SEEKTABLE, VORBIS_COMMENT, CUESHEET, PICTURE, RESERVED }
 declare class MetadataBlock {
-	constructor(type: metadataBlockTypes, data: Uint8Array, start: number, end: number);
-	readonly type: metadataBlockTypes;
+	constructor(type: MetadataBlockType, data: Uint8Array, start: number, end: number);
+	readonly type: MetadataBlockType;
 	readonly typeName: string;
 	readonly data: Uint8Array;
 	decodeData(): StreamInfoMetadata | number | ApplicationMetadata | SeekPoint[] | PictureMetadata | VorbisCommentMetadata | void;
-	static encodeHeader(data: TypedArray | ArrayBuffer | Blob, type: metadataBlockTypes, isLast: boolean): Uint8Array;
+	static encodeHeader(data: TypedArray | ArrayBuffer | Blob, type: MetadataBlockType, isLast: boolean): Uint8Array;
 }
 declare class StreamInfoMetadata {
 	readonly minBlockSize: number;
@@ -50,4 +50,4 @@ declare class PictureMetadata {
 }
 declare function allMetadataBlock(context: BufferContext<Uint8Array>): MetadataBlock[];
 declare function allMetadataBlock(data: Uint8Array): MetadataBlock[];
-export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, ApplicationMetadata, SeekPoint, VorbisCommentMetadata, metadataBlockTypes }
+export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, ApplicationMetadata, SeekPoint, VorbisCommentMetadata, MetadataBlockType }
