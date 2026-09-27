@@ -45,7 +45,7 @@ function littleEndianToUint(data) {
 	const length = data.length;
 	if (length > 4) throw new Error(`Failed to execute 'littleEndianToUint': Cannot process data with length greater then 4.`);
 	var result = 0;
-	for (let i = 0; i < length; ++i) result |= data[i] << 8 * i;
+	for (let i = 0; i < length; ++i) result |= data[i] << (i << 3);
 	return result >>> 0;
 }
 function littleEndianToInt(data) {
@@ -53,22 +53,22 @@ function littleEndianToInt(data) {
 	const length = data.length;
 	if (length > 4) throw new Error(`Failed to execute 'littleEndianToInt': Cannot process data with length greater then 4.`);
 	var result = 0;
-	for (let i = 0; i < length; ++i) result |= data[i] << 8 * i;
+	for (let i = 0; i < length; ++i) result |= data[i] << (i << 3);
 	return data[length - 1] & 128 ? result | -1 << (length << 3) : result;
 }
 function littleEndianToBigUint(data) {
 	if (!(data instanceof Uint8Array)) throw new TypeError("Failed to execute 'littleEndianToBigUint': Argument 'data' is not type of Uint8Array.");
 	const length = BigInt(data.length);
 	var result = 0n;
-	for (let i = 0n; i < length; ++i) result |= BigInt(data[i]) << 8n * i;
+	for (let i = 0n; i < length; ++i) result |= BigInt(data[i]) << (i << 3n);
 	return result;
 }
 function littleEndianToBigInt(data) {
 	if (!(data instanceof Uint8Array)) throw new TypeError("Failed to execute 'littleEndianToBigInt': Argument 'data' is not type of Uint8Array.");
 	const length = BigInt(data.length);
 	var result = 0n;
-	for (let i = 0n; i < length; ++i) result |= BigInt(data[i]) << 8n * i;
-	return data[length - 1n] > 127 ? result | -1n << length * 8n : result;
+	for (let i = 0n; i < length; ++i) result |= BigInt(data[i]) << (i << 3n);
+	return data[length - 1n] & 128 ? result | -1n << (length << 3n) : result;
 }
 function bigEndianToUint(data) {
 	if (!(data instanceof Uint8Array)) throw new TypeError("Failed to execute 'bigEndianToUint': Argument 'data' is not type of Uint8Array.");
@@ -98,7 +98,7 @@ function bigEndianToBigInt(data) {
 	const length = BigInt(data.length);
 	var result = 0n;
 	for (let i = 0n; i < length; ++i) result = result << 8n | BigInt(data[i]);
-	return data[0] > 127 ? result | -1n << length * 8n : result;
+	return data[0] & 128 ? result | -1n << (length << 3n) : result;
 }
 function uintToLittleEndian(value, bufferArray) {
 	if (typeof value != "number") throw new TypeError("Failed to execute 'uintToLittleEndian': Argument 'value' is not a number.");
