@@ -151,11 +151,12 @@ class VorbisCommentMetadata {
 		Object.defineProperty(this, "tags", { value: tags, configurable: true, enumerable: true });
 	}
 	encode() { return VorbisCommentMetadata.encode(this.tags, this.#vendor) }
-	static encode(tags, vendor = "") {
+	static encode(tags, vendor) {
 		if (!(tags instanceof Object)) throw new TypeError("Argument 'tags' must be an object.");
-		if (typeof vendor != "string") throw new TypeError("Argument 'vendor' must be a string.");
-		vendor = encodeString(vendor || "BSIF.FLAC.MetadataBlock");
-		var length = vendor.byteLength + 8;
+		if (vendor !== undefined && vendor !== null && typeof vendor != "string") throw new TypeError("Argument 'vendor' must be a string.");
+		vendor = encodeString(vendor ?? "BSIF.FLAC.MetadataBlock");
+		const vendorLength = vendor.byteLength;
+		var length = vendorLength + 8;
 		if (length > 16777215) throw new Error("Content too long.");
 		const temp = [];
 		var n = 0;
