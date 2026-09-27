@@ -3,7 +3,7 @@ const prototype = Date.prototype, {
     setFullYear: originalSetFullYear, setUTCFullYear: originalSetUTCFullYear
 } = prototype;
 prototype.getMonth = function getMonth() { return originalGetMonth.call(this) + 1 };
-prototype.setMonth = function getMonth(month, date = undefined) {
+prototype.setMonth = function setMonth(month, date = undefined) {
     if (arguments.length) arguments[0] = Number(arguments[0]) - 1;
     return originalSetMonth.call(this, ...arguments);
 };
