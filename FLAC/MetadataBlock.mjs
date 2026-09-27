@@ -24,7 +24,7 @@ class MetadataBlock {
 			case 3: return decodeSeekTable(this.data);
 			case 4: return new VorbisCommentMetadata(this.data);
 			case 5: return; //not support
-			case 6: return new PictureMetedata(this.data);
+			case 6: return new PictureMetadata(this.data);
 			default: throw new Error("Invalid type.")
 		}
 	}
@@ -192,7 +192,7 @@ class VorbisCommentMetadata {
 		return new Blob(temp)
 	}
 }
-class PictureMetedata {
+class PictureMetadata {
 	constructor(data) {
 		if (!(data instanceof Uint8Array)) throw new TypeError("Argument 'data' is not a Uint8Array.");
 		let current = 8;
@@ -211,6 +211,6 @@ class PictureMetedata {
 		length = bigEndianToUint(data.subarray(current, current += 4));
 		Object.defineProperty(this, "image", { value: new Blob([data.subarray(current, current + length)], { type: mime }), enumerable: true });
 	}
-	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: "PictureMetedata", configurable: true }) }
+	static { Object.defineProperty(this.prototype, Symbol.toStringTag, { value: "PictureMetadata", configurable: true }) }
 }
 export { allMetadataBlock, MetadataBlock, StreamInfoMetadata, ApplicationMetadata, SeekPoint, VorbisCommentMetadata, MetadataBlockType }
