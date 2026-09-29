@@ -64,7 +64,7 @@ function downloader(url, allowCache, onfinish, abortHandlerSetter) {
 	function onReject() { onfinish(false) }
 	const xhr = ajax({
 		url,
-		cache: allowCache,
+		allowCache,
 		success: onfinish,
 		fail: onReject,
 		error: onReject,
@@ -195,7 +195,7 @@ class LoadRequest extends XMLHttpRequest {
 	send(data) {
 		LoadRequest.#checkInstance(this);
 		if (super.readyState != XMLHttpRequest.OPENED) throw new DOMException("Failed to execute 'send' on 'LoadRequest': The object's state must be OPENED.");
-		if (!this.#allowCache) super.setRequestHeader("If-Modified-Since", "0");
+		if (!this.#allowCache) super.setRequestHeader("Cache-Control", "no-store");
 		this.#fetching = true;
 		this.#startTime = Date.now();
 		super.send(data);
@@ -226,7 +226,7 @@ class LoadRequest extends XMLHttpRequest {
 	// @ts-ignore
 	set responseType(_ignore) {
 		LoadRequest.#checkInstance(this);
-		console.warn("Connot change 'LoadRequest.responseType'.")
+		console.warn("Cannot change 'LoadRequest.responseType'.")
 	}
 	get response() { return this.#done ? this.#response : null }
 	// @ts-ignore
