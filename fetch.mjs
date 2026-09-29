@@ -282,7 +282,7 @@ function post(url, body = null, parseType = ParseType.SOURCE, headers = null, se
  */
 async function loadSubResource(url, parseType, allowCache, signal) {
 	const options = { signal };
-	if (allowCache) options.headers = { "Cache-Control": "no-store" };
+	if (!allowCache) options.headers = { "Cache-Control": "no-store" };
 	const response = await fetch(url, options);
 	if (!response.ok) throw new NotOkError(response.status);
 	return parseResponse(response, parseType);
