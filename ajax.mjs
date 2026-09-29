@@ -269,6 +269,7 @@ function load(url, targetElement, allowCache = true, preloadResource = true, suc
 			const operator = document.createRange().createContextualFragment(response);
 			targetElement.innerHTML = "";
 			targetElement.appendChild(operator);
+			if (typeof success == "function") success.call(this, this.status);
 		},
 		allowCache
 	});
