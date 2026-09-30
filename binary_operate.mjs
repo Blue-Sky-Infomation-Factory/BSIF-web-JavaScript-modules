@@ -106,7 +106,7 @@ function uintToLittleEndian(value, bufferArray) {
 	if (!(bufferArray instanceof Uint8Array)) throw new TypeError("Failed to execute 'uintToLittleEndian': Argument 'bufferArray' is type of Uint8Array.");
 	const size = bufferArray.byteLength;
 	if (size > 4) throw new Error("Failed to execute 'uintToLittleEndian': Byte length cannot greater than 4.");
-	if (value > 0xFFFFFFFF >>> (4 - size << 3)) throw new Error("Failed to execute 'uintToLittleEndian': Given array cannot contain the value.");
+	if (value > (size ? 0xFFFFFFFF >>> (4 - size << 3) : 0)) throw new Error("Failed to execute 'uintToLittleEndian': Given array cannot contain the value.");
 	for (let i = 0; i < size; ++i) {
 		bufferArray[i] = value & 255;
 		value >>>= 8;
@@ -156,7 +156,7 @@ function uintToBigEndian(value, bufferArray) {
 	if (!(bufferArray instanceof Uint8Array)) throw new TypeError("Failed to execute 'uintToBigEndian': Argument 'bufferArray' is type of Uint8Array.");
 	const size = bufferArray.byteLength;
 	if (size > 4) throw new Error("Failed to execute 'uintToBigEndian': Byte length cannot greater than 4.");
-	if (value > 0xFFFFFFFF >>> (4 - size << 3)) throw new Error("Failed to execute 'uintToBigEndian': Given array cannot contain the value.");
+	if (value > (size ? 0xFFFFFFFF >>> (4 - size << 3) : 0)) throw new Error("Failed to execute 'uintToBigEndian': Given array cannot contain the value.");
 	for (let i = size - 1; i > -1; --i) {
 		bufferArray[i] = value & 255;
 		value >>>= 8;
